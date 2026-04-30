@@ -39,10 +39,13 @@ class MainActivity : ComponentActivity() {
                         onLeadClick = { currentScreen = "leaderboard" },
                         onExitClick = { finish() },
                         onSettingsClick = {
-                            // Handle settings click later
+                            currentScreen = "settings"
                         }
                     )
                     "leaderboard" -> LeaderboardScreen(
+                        onBackClick = { currentScreen = "title" }
+                    )
+                    "settings" -> SettingsScreen(
                         onBackClick = { currentScreen = "title" }
                     )
                 }
@@ -181,5 +184,51 @@ fun LeaderboardScreen(onBackClick: () -> Unit) {
 fun LeaderboardScreenPreview() {
     QuizSuperior_SRETheme {
         LeaderboardScreen(onBackClick = {})
+    }
+}
+
+@Composable
+fun SettingsScreen(onBackClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp)
+    ) {
+        // Title at the top center
+        Text(
+            text = "Settings",
+            fontSize = 36.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+
+        // Center content: Options
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "Dark Mode: Off", fontSize = 20.sp)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = "Language: English", fontSize = 20.sp)
+        }
+
+        // Back button in the bottom-left corner
+        Button(
+            onClick = onBackClick,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .width(120.dp)
+        ) {
+            Text("Back")
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsScreenPreview() {
+    QuizSuperior_SRETheme {
+        SettingsScreen(onBackClick = {})
     }
 }
