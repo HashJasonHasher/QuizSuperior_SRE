@@ -9,6 +9,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -27,14 +31,21 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             QuizSuperior_SRETheme {
-                TitleScreen(
-                    onStartClick = {},
-                    onLeadClick = {},
-                    onExitClick = { finish() },
-                    onSettingsClick = {
-                        // Handle settings click later
-                    }
-                )
+                var currentScreen by remember { mutableStateOf("title") }
+
+                when (currentScreen) {
+                    "title" -> TitleScreen(
+                        onStartClick = {},
+                        onLeadClick = { currentScreen = "leaderboard" },
+                        onExitClick = { finish() },
+                        onSettingsClick = {
+                            // Handle settings click later
+                        }
+                    )
+                    "leaderboard" -> LeaderboardScreen(
+                        onBackClick = { currentScreen = "title" }
+                    )
+                }
             }
         }
     }
@@ -120,5 +131,55 @@ fun TitleScreenPreview() {
             onExitClick = {},
             onSettingsClick = {}
         )
+    }
+}
+
+@Composable
+fun LeaderboardScreen(onBackClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp)
+    ) {
+        // Center content: Title and Empty Column
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Leaderboard",
+                fontSize = 36.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Empty column list placeholder
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Future leaderboard data goes here
+            }
+        }
+
+        // Back button in the bottom-left corner
+        Button(
+            onClick = onBackClick,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .width(120.dp)
+        ) {
+            Text("Back")
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LeaderboardScreenPreview() {
+    QuizSuperior_SRETheme {
+        LeaderboardScreen(onBackClick = {})
     }
 }
