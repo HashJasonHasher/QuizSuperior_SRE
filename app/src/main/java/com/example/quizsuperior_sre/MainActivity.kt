@@ -127,17 +127,17 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            var darkTheme by remember { 
-                mutableStateOf(getPreferences(Context.MODE_PRIVATE).getBoolean("dark_mode", false)) 
+            var darkTheme by remember {
+                mutableStateOf(getPreferences(Context.MODE_PRIVATE).getBoolean("dark_mode", false))
             }
-            
+
             val quizColors = if (darkTheme) DarkQuizColors else LightQuizColors
-            
+
             CompositionLocalProvider(LocalQuizColors provides quizColors) {
                 QuizSuperior_SRETheme(darkTheme = darkTheme) {
                     QuizSuperiorApp(
                         isDarkTheme = darkTheme,
-                        onDarkThemeChange = { 
+                        onDarkThemeChange = {
                             darkTheme = it
                             getPreferences(Context.MODE_PRIVATE).edit().putBoolean("dark_mode", it).apply()
                         }
@@ -160,9 +160,9 @@ fun QuizSuperiorApp(
 
     val uriHandler = LocalUriHandler.current
     val subjects = remember { QuizRepository.sampleSubjects() }
-    
+
     val prefs = remember { context.getSharedPreferences("quiz_prefs", Context.MODE_PRIVATE) }
-    
+
     fun loadLeaderboard(): List<ScoreEntry> {
         val data = prefs.getString("leaderboard", null) ?: return listOf(
             ScoreEntry("Alex", "Calculus 1", 4, 4),
@@ -214,99 +214,135 @@ fun QuizSuperiorApp(
         )
     }
 
-    when (val current = screen) {
-        AppScreen.Title -> TitleScreen(
-            onStartClick = { screen = AppScreen.Choose },
-            onLeadClick = { screen = AppScreen.Leaderboard },
-            onExitClick = { activity.finish() },
-            onSettingsClick = { showSettings = true }
-        )
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Paper
+                )
+            )
+        },
+        containerColor = Clay
+    ) { innerPadding ->
 
-        AppScreen.Choose -> ChooseScreen(
-            selectedSubject = selectedSubject,
-            searchQuery = searchQuery,
-            onSearchQueryChange = { searchQuery = it },
-            subjects = subjects,
-            onBackClick = { screen = AppScreen.Title },
-            onSubjectSelected = { selectedSubjectId = it.id },
-            onStartQuiz = {
-                if (selectedSubject != null) {
-                    screen = AppScreen.Quiz(selectedSubject.id)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            when (val current = screen) {
+                AppScreen.Title -> TitleScreen(
+                    onStartClick = { screen = AppScreen.Choose },
+                    onLeadClick = { screen = AppScreen.Leaderboard },
+                    onExitClick = { activity.finish() },
+                    onSettingsClick = { showSettings = true }
+                )
+
+                AppScreen.Choose -> ChooseScreen(
+                    selectedSubject = selectedSubject,
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
+                    subjects = subjects,
+                    onBackClick = { screen = AppScreen.Title },
+                    onSubjectSelected = { selectedSubjectId = it.id },
+                    onStartQuiz = {
+                        if (selectedSubject != null) {
+                            screen = AppScreen.Quiz(selectedSubject.id)
+                        }
+                    },
+                    onOpenCards = {
+                        if (selectedSubject != null) {
+                            screen = AppScreen.Cards(selectedSubject.id)
+                        }
+                    },
+                    onOpenResources = {
+                        if (selectedSubject != null) {
+                            screen = AppScreen.Resources(selectedSubject.id)
+                        }
+                    },
+                    onInvalidAction = {
+                        // handled inside screen by local error message
+                    }
+                )
+
+                is AppScreen.Quiz -> {
+                    val subject = subjects.first { it.id == current.subjectId }
+                    QuizScreen(
+                        subject = subject,
+                        soundEffects = soundEffects,
+                        hints = hints,
+                        onBackClick = { screen = AppScreen.Choose },
+                        onFinished = { score, total, timedOut ->
+                            screen = AppScreen.Result(score, total, subject.name, timedOut)
+                        }
+                    )
                 }
-            },
-            onOpenCards = {
-                if (selectedSubject != null) {
-                    screen = AppScreen.Cards(selectedSubject.id)
+
+                is AppScreen.Cards -> {
+                    val subject = subjects.first { it.id == current.subjectId }
+                    CardsScreen(
+                        subject = subject,
+                        onBackClick = { screen = AppScreen.Choose }
+                    )
                 }
-            },
-            onOpenResources = {
-                if (selectedSubject != null) {
-                    screen = AppScreen.Resources(selectedSubject.id)
+
+                is AppScreen.Resources -> {
+                    val subject = subjects.first { it.id == current.subjectId }
+                    ResourcesScreen(
+                        subject = subject,
+                        uriHandler = uriHandler,
+                        onBackClick = { screen = AppScreen.Choose }
+                    )
                 }
-            },
-            onInvalidAction = {
-                // handled inside screen by local error message
+
+                AppScreen.Leaderboard -> LeaderboardScreen(
+                    entries = leaderboard,
+                    onBackClick = { screen = AppScreen.Title }
+                )
+
+                is AppScreen.Result -> ResultScreen(
+                    subjectName = current.subjectName,
+                    score = current.score,
+                    total = current.total,
+                    timedOut = current.timedOut,
+                    onSaveScore = { playerName ->
+                        val newEntry = ScoreEntry(playerName, current.subjectName, current.score, current.total)
+                        leaderboard.add(0, newEntry)
+                        leaderboard.sortByDescending { it.percent }
+                        saveLeaderboard(leaderboard.toList())
+                        screen = AppScreen.Leaderboard
+                    },
+                    onPlayAgain = {
+                        selectedSubjectId?.let { id ->
+                            screen = AppScreen.Quiz(id)
+                        } ?: run { screen = AppScreen.Choose }
+                    },
+                    onHome = { screen = AppScreen.Title },
+                    onLeaderboard = { screen = AppScreen.Leaderboard }
+                )
             }
-        )
-
-        is AppScreen.Quiz -> {
-            val subject = subjects.first { it.id == current.subjectId }
-            QuizScreen(
-                subject = subject,
-                soundEffects = soundEffects,
-                hints = hints,
-                onBackClick = { screen = AppScreen.Choose },
-                onFinished = { score, total, timedOut ->
-                    screen = AppScreen.Result(score, total, subject.name, timedOut)
-                }
-            )
         }
-
-        is AppScreen.Cards -> {
-            val subject = subjects.first { it.id == current.subjectId }
-            CardsScreen(
-                subject = subject,
-                onBackClick = { screen = AppScreen.Choose }
-            )
-        }
-
-        is AppScreen.Resources -> {
-            val subject = subjects.first { it.id == current.subjectId }
-            ResourcesScreen(
-                subject = subject,
-                uriHandler = uriHandler,
-                onBackClick = { screen = AppScreen.Choose }
-            )
-        }
-
-        AppScreen.Leaderboard -> LeaderboardScreen(
-            entries = leaderboard,
-            onBackClick = { screen = AppScreen.Title }
-        )
-
-        is AppScreen.Result -> ResultScreen(
-            subjectName = current.subjectName,
-            score = current.score,
-            total = current.total,
-            timedOut = current.timedOut,
-            onSaveScore = { playerName ->
-                val newEntry = ScoreEntry(playerName, current.subjectName, current.score, current.total)
-                leaderboard.add(0, newEntry)
-                leaderboard.sortByDescending { it.percent }
-                saveLeaderboard(leaderboard.toList())
-                screen = AppScreen.Leaderboard
-            },
-            onPlayAgain = {
-                selectedSubjectId?.let { id ->
-                    screen = AppScreen.Quiz(id)
-                } ?: run { screen = AppScreen.Choose }
-            },
-            onHome = { screen = AppScreen.Title },
-            onLeaderboard = { screen = AppScreen.Leaderboard }
+    }
+}
+@Composable
+private fun QuizTopBar() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .background(Clay),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "Quiz Superior",
+            color = Paper,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.sp
         )
     }
 }
-
 @Composable
 private fun TitleScreen(
     onStartClick: () -> Unit,
@@ -390,8 +426,8 @@ private fun ChooseScreen(
     val filtered = remember(searchQuery, subjects) {
         if (searchQuery.isBlank()) subjects else subjects.filter {
             it.name.contains(searchQuery, ignoreCase = true) ||
-                it.group.contains(searchQuery, ignoreCase = true) ||
-                it.description.contains(searchQuery, ignoreCase = true)
+                    it.group.contains(searchQuery, ignoreCase = true) ||
+                    it.description.contains(searchQuery, ignoreCase = true)
         }
     }
 
