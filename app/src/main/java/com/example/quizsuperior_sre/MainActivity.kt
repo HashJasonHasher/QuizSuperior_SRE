@@ -1,6 +1,7 @@
 package com.example.quizsuperior_sre
 
 import android.app.Activity
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -50,14 +51,59 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.quizsuperior_sre.ui.theme.QuizSuperior_SRETheme
+import androidx.core.content.edit
 
-private val Paper = Color(0xFFF4EBC8)
-private val Clay = Color(0xFFD28A5B)
-private val Slate = Color(0xFF506477)
-private val DeepSlate = Color(0xFF314452)
-private val SoftWhite = Color(0xFFFDF8EA)
-private val Danger = Color(0xFFB73A3A)
-private val Success = Color(0xFF2E7D32)
+
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+
+data class QuizColors(
+    val paper: Color,
+    val clay: Color,
+    val slate: Color,
+    val deepSlate: Color,
+    val softWhite: Color,
+    val danger: Color,
+    val success: Color,
+    val selected: Color,
+    val correct: Color
+)
+
+val LocalQuizColors = staticCompositionLocalOf<QuizColors> {
+    error("No QuizColors provided")
+}
+
+private val LightQuizColors = QuizColors(
+    paper = Color(0xFFF4EBC8),
+    clay = Color(0xFFD28A5B),
+    slate = Color(0xFF506477),
+    deepSlate = Color(0xFF314452),
+    softWhite = Color(0xFFFDF8EA),
+    danger = Color(0xFFB73A3A),
+    success = Color(0xFF2E7D32),
+    selected = Color(0xFFE7EEF5),
+    correct = Color(0xFFDFF3E0)
+)
+
+private val DarkQuizColors = QuizColors(
+    paper = Color(0xFF2D3748),
+    clay = Color(0xFF1A202C),
+    slate = Color(0xFFCBD5E0),
+    deepSlate = Color(0xFFE2E8F0),
+    softWhite = Color(0xFF4A5568),
+    danger = Color(0xFFF56565),
+    success = Color(0xFF48BB78),
+    selected = Color(0xFF3B4D61),
+    correct = Color(0xFF2D4F35)
+)
+
+private val Paper @Composable get() = LocalQuizColors.current.paper
+private val Clay @Composable get() = LocalQuizColors.current.clay
+private val Slate @Composable get() = LocalQuizColors.current.slate
+private val DeepSlate @Composable get() = LocalQuizColors.current.deepSlate
+private val SoftWhite @Composable get() = LocalQuizColors.current.softWhite
+private val Danger @Composable get() = LocalQuizColors.current.danger
+private val Success @Composable get() = LocalQuizColors.current.success
 
 sealed class AppScreen {
     object Title : AppScreen()
@@ -75,26 +121,64 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            QuizSuperior_SRETheme {
-                QuizSuperiorApp()
+            var darkTheme by remember { 
+                mutableStateOf(getPreferences(Context.MODE_PRIVATE).getBoolean("dark_mode", false)) 
+            }
+            
+            val quizColors = if (darkTheme) DarkQuizColors else LightQuizColors
+            
+            CompositionLocalProvider(LocalQuizColors provides quizColors) {
+                QuizSuperior_SRETheme(darkTheme = darkTheme) {
+                    QuizSuperiorApp(
+                        isDarkTheme = darkTheme,
+                        onDarkThemeChange = { 
+                            darkTheme = it
+                            getPreferences(Context.MODE_PRIVATE).edit().putBoolean("dark_mode", it).apply()
+                        }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun QuizSuperiorApp() {
-    val activity = LocalContext.current as Activity
+fun QuizSuperiorApp(
+    isDarkTheme: Boolean,
+    onDarkThemeChange: (Boolean) -> Unit
+) {
+    val context = LocalContext.current
+    val activity = context as Activity
     val uriHandler = LocalUriHandler.current
     val subjects = remember { QuizRepository.sampleSubjects() }
-    val leaderboard = remember {
-        mutableStateListOf(
+    
+    val prefs = remember { context.getSharedPreferences("quiz_prefs", Context.MODE_PRIVATE) }
+    
+    fun loadLeaderboard(): List<ScoreEntry> {
+        val data = prefs.getString("leaderboard", null) ?: return listOf(
             ScoreEntry("Alex", "Calculus 1", 4, 4),
             ScoreEntry("Sam", "History", 4, 4),
             ScoreEntry("Jordan", "Java Prog 1", 3, 4),
             ScoreEntry("Taylor", "Trigonometry", 3, 4),
             ScoreEntry("Riley", "Python 1", 2, 4)
         )
+        return try {
+            data.split(";").filter { it.isNotBlank() }.map { line ->
+                val parts = line.split("|")
+                ScoreEntry(parts[0], parts[1], parts[2].toInt(), parts[3].toInt())
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun saveLeaderboard(entries: List<ScoreEntry>) {
+        val serialized = entries.joinToString(";") { "${it.playerName}|${it.subjectName}|${it.correct}|${it.total}" }
+        prefs.edit { putString("leaderboard", serialized) }
+    }
+
+    val leaderboard = remember {
+        mutableStateListOf<ScoreEntry>().apply { addAll(loadLeaderboard()) }
     }
 
     var screen by remember { mutableStateOf<AppScreen>(AppScreen.Title) }
@@ -112,9 +196,11 @@ fun QuizSuperiorApp() {
             soundEffects = soundEffects,
             music = music,
             hints = hints,
+            isDarkTheme = isDarkTheme,
             onSoundEffectsChange = { soundEffects = it },
             onMusicChange = { music = it },
             onHintsChange = { hints = it },
+            onDarkThemeChange = onDarkThemeChange,
             onDismiss = { showSettings = false }
         )
     }
@@ -162,8 +248,6 @@ fun QuizSuperiorApp() {
                 hints = hints,
                 onBackClick = { screen = AppScreen.Choose },
                 onFinished = { score, total, timedOut ->
-                    leaderboard.add(0, ScoreEntry("You", subject.name, score, total))
-                    leaderboard.sortByDescending { it.percent }
                     screen = AppScreen.Result(score, total, subject.name, timedOut)
                 }
             )
@@ -196,6 +280,13 @@ fun QuizSuperiorApp() {
             score = current.score,
             total = current.total,
             timedOut = current.timedOut,
+            onSaveScore = { playerName ->
+                val newEntry = ScoreEntry(playerName, current.subjectName, current.score, current.total)
+                leaderboard.add(0, newEntry)
+                leaderboard.sortByDescending { it.percent }
+                saveLeaderboard(leaderboard.toList())
+                screen = AppScreen.Leaderboard
+            },
             onPlayAgain = {
                 selectedSubjectId?.let { id ->
                     screen = AppScreen.Quiz(id)
@@ -506,8 +597,8 @@ private fun QuizScreen(
                 question.options.forEachIndexed { index, option ->
                     val selected = selectedOption == index
                     val background = when {
-                        answered && index == question.correctIndex -> Color(0xFFDFF3E0)
-                        selected -> Color(0xFFE7EEF5)
+                        answered && index == question.correctIndex -> LocalQuizColors.current.correct
+                        selected -> LocalQuizColors.current.selected
                         else -> Paper
                     }
                     Card(
@@ -630,7 +721,7 @@ private fun CardsScreen(
                     Text(text = if (expandedIndex == index) card.body else card.body.take(72) + if (card.body.length > 72) "..." else "", color = Slate)
                     Text(
                         text = if (expandedIndex == index) "Tap to collapse" else "Tap to expand",
-                        color = Slate,
+                        color = LocalQuizColors.current.slate,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -783,15 +874,20 @@ private fun ResultScreen(
     score: Int,
     total: Int,
     timedOut: Boolean,
+    onSaveScore: (String) -> Unit,
     onPlayAgain: () -> Unit,
     onHome: () -> Unit,
     onLeaderboard: () -> Unit
 ) {
+    var name by remember { mutableStateOf("") }
+    var hasSaved by remember { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Clay)
-            .padding(18.dp),
+            .padding(18.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -819,9 +915,35 @@ private fun ResultScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        if (!hasSaved) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = SoftWhite),
+                shape = RoundedCornerShape(22.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Enter name for leaderboard:", fontWeight = FontWeight.Bold, color = DeepSlate)
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Your Name") },
+                        singleLine = true
+                    )
+                    ActionButton(text = "SAVE SCORE", modifier = Modifier.fillMaxWidth()) {
+                        if (name.isNotBlank()) {
+                            onSaveScore(name)
+                            hasSaved = true
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             ActionButton(text = "PLAY AGAIN", modifier = Modifier.weight(1f), onClick = onPlayAgain)
-            ActionButton(text = "SCORE", modifier = Modifier.weight(1f), onClick = onLeaderboard)
+            ActionButton(text = "LEADERBOARD", modifier = Modifier.weight(1f), onClick = onLeaderboard)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -836,9 +958,11 @@ private fun SettingsDialog(
     soundEffects: Boolean,
     music: Boolean,
     hints: Boolean,
+    isDarkTheme: Boolean,
     onSoundEffectsChange: (Boolean) -> Unit,
     onMusicChange: (Boolean) -> Unit,
     onHintsChange: (Boolean) -> Unit,
+    onDarkThemeChange: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -857,6 +981,10 @@ private fun SettingsDialog(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Text("Show Hints")
                     Switch(checked = hints, onCheckedChange = onHintsChange)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Dark Mode")
+                    Switch(checked = isDarkTheme, onCheckedChange = onDarkThemeChange)
                 }
             }
         },
