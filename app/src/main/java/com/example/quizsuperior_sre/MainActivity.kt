@@ -52,8 +52,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.quizsuperior_sre.ui.theme.QuizSuperior_SRETheme
 import androidx.core.content.edit
-
-
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 
@@ -142,13 +148,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuizSuperiorApp(
     isDarkTheme: Boolean,
     onDarkThemeChange: (Boolean) -> Unit
+
 ) {
     val context = LocalContext.current
     val activity = context as Activity
+
     val uriHandler = LocalUriHandler.current
     val subjects = remember { QuizRepository.sampleSubjects() }
     
