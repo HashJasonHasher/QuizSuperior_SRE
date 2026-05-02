@@ -190,9 +190,9 @@ fun QuizSuperiorApp(
     var selectedSubjectId by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
-    var soundEffects by remember { mutableStateOf(true) }
-    var music by remember { mutableStateOf(false) }
-    var hints by remember { mutableStateOf(true) }
+    var soundEffects by remember { mutableStateOf(prefs.getBoolean("sound_effects", true)) }
+    var music by remember { mutableStateOf(prefs.getBoolean("music", false)) }
+    var hints by remember { mutableStateOf(prefs.getBoolean("hints", true)) }
 
     val selectedSubject = selectedSubjectId?.let { id -> subjects.firstOrNull { it.id == id } }
 
@@ -202,9 +202,18 @@ fun QuizSuperiorApp(
             music = music,
             hints = hints,
             isDarkTheme = isDarkTheme,
-            onSoundEffectsChange = { soundEffects = it },
-            onMusicChange = { music = it },
-            onHintsChange = { hints = it },
+            onSoundEffectsChange = {
+                soundEffects = it
+                prefs.edit { putBoolean("sound_effects", it) }
+            },
+            onMusicChange = {
+                music = it
+                prefs.edit { putBoolean("music", it) }
+            },
+            onHintsChange = {
+                hints = it
+                prefs.edit { putBoolean("hints", it) }
+            },
             onDarkThemeChange = onDarkThemeChange,
             onDismiss = { showSettings = false }
         )
@@ -675,7 +684,13 @@ private fun QuizScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedButton(onClick = onBackClick, modifier = Modifier.weight(1f)) {
+            OutlinedButton(
+                onClick = onBackClick,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(60.dp),
+                shape = RoundedCornerShape(18.dp)
+            ) {
                 Text("Back")
             }
 
@@ -921,73 +936,102 @@ private fun ResultScreen(
     var name by remember { mutableStateOf("") }
     var hasSaved by remember { mutableStateOf(false) }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Clay)
-            .padding(18.dp)
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .verticalScroll(rememberScrollState())
+            .padding(18.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Paper),
-            shape = RoundedCornerShape(26.dp),
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Column(
-                modifier = Modifier.padding(22.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = if (timedOut) "TIME OVER" else "GAME OVER",
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Slate
-                )
-                Text(text = subjectName, fontWeight = FontWeight.Bold, color = DeepSlate)
-                Text(text = "$score / $total", fontSize = 34.sp, fontWeight = FontWeight.Black, color = DeepSlate)
-                Text(text = "${if (total == 0) 0 else score * 100 / total}%", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Slate)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        if (!hasSaved) {
             Card(
-                colors = CardDefaults.cardColors(containerColor = SoftWhite),
-                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = Paper),
+                shape = RoundedCornerShape(26.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Enter name for leaderboard:", fontWeight = FontWeight.Bold, color = DeepSlate)
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Your Name") },
-                        singleLine = true
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(22.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = if (timedOut) "TIME OVER" else "GAME OVER",
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Slate,
+                        textAlign = TextAlign.Center
                     )
-                    ActionButton(text = "SAVE SCORE", modifier = Modifier.fillMaxWidth()) {
-                        if (name.isNotBlank()) {
-                            onSaveScore(name)
-                            hasSaved = true
+                    Text(
+                        text = subjectName,
+                        fontWeight = FontWeight.Bold,
+                        color = DeepSlate,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "$score / $total",
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Black,
+                        color = DeepSlate,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "${if (total == 0) 0 else score * 100 / total}%",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Slate,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            if (!hasSaved) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = SoftWhite),
+                    shape = RoundedCornerShape(22.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Enter name for leaderboard:", fontWeight = FontWeight.Bold, color = DeepSlate)
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { name = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Your Name") },
+                            singleLine = true
+                        )
+                        ActionButton(text = "SAVE SCORE", modifier = Modifier.fillMaxWidth()) {
+                            if (name.isNotBlank()) {
+                                onSaveScore(name)
+                                hasSaved = true
+                            }
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(24.dp))
             }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            ActionButton(text = "PLAY AGAIN", modifier = Modifier.weight(1f), onClick = onPlayAgain)
-            ActionButton(text = "LEADERBOARD", modifier = Modifier.weight(1f), onClick = onLeaderboard)
-        }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                ActionButton(text = "PLAY AGAIN", modifier = Modifier.weight(1f), onClick = onPlayAgain)
+                ActionButton(text = "LEADERBOARD", modifier = Modifier.weight(1f), onClick = onLeaderboard)
+            }
 
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedButton(onClick = onHome, modifier = Modifier.fillMaxWidth()) {
-            Text("HOME")
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onHome,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Text("HOME")
+            }
         }
     }
 }
