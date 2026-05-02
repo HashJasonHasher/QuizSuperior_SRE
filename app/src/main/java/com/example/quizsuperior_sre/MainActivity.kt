@@ -52,10 +52,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.quizsuperior_sre.ui.theme.QuizSuperior_SRETheme
 import androidx.core.content.edit
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -128,7 +124,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var darkTheme by remember {
-                mutableStateOf(getPreferences(Context.MODE_PRIVATE).getBoolean("dark_mode", false))
+                mutableStateOf(getPreferences(MODE_PRIVATE).getBoolean("dark_mode", false))
             }
 
             val quizColors = if (darkTheme) DarkQuizColors else LightQuizColors
@@ -139,7 +135,7 @@ class MainActivity : ComponentActivity() {
                         isDarkTheme = darkTheme,
                         onDarkThemeChange = {
                             darkTheme = it
-                            getPreferences(Context.MODE_PRIVATE).edit().putBoolean("dark_mode", it).apply()
+                            getPreferences(MODE_PRIVATE).edit { putBoolean("dark_mode", it) }
                         }
                     )
                 }
@@ -165,18 +161,18 @@ fun QuizSuperiorApp(
 
     fun loadLeaderboard(): List<ScoreEntry> {
         val data = prefs.getString("leaderboard", null) ?: return listOf(
-            ScoreEntry("Alex", "Calculus 1", 4, 4),
-            ScoreEntry("Sam", "History", 4, 4),
-            ScoreEntry("Jordan", "Java Prog 1", 3, 4),
-            ScoreEntry("Taylor", "Trigonometry", 3, 4),
-            ScoreEntry("Riley", "Python 1", 2, 4)
+            ScoreEntry("Alex", "Calculus 1", 10, 10),
+            ScoreEntry("Sam", "History", 9, 10),
+            ScoreEntry("Jordan", "Java Prog 1", 7, 10),
+            ScoreEntry("Taylor", "Trigonometry", 6, 10),
+            ScoreEntry("Riley", "Python 1", 5, 10)
         )
         return try {
             data.split(";").filter { it.isNotBlank() }.map { line ->
                 val parts = line.split("|")
                 ScoreEntry(parts[0], parts[1], parts[2].toInt(), parts[3].toInt())
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }
@@ -218,7 +214,7 @@ fun QuizSuperiorApp(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Paper
                 )
             )
@@ -298,6 +294,10 @@ fun QuizSuperiorApp(
 
                 AppScreen.Leaderboard -> LeaderboardScreen(
                     entries = leaderboard,
+                    onRemoveEntry = { index ->
+                        leaderboard.removeAt(index)
+                        saveLeaderboard(leaderboard.toList())
+                    },
                     onBackClick = { screen = AppScreen.Title }
                 )
 
@@ -323,24 +323,6 @@ fun QuizSuperiorApp(
                 )
             }
         }
-    }
-}
-@Composable
-private fun QuizTopBar() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .background(Clay),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Quiz Superior",
-            color = Paper,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.sp
-        )
     }
 }
 @Composable
@@ -577,8 +559,13 @@ private fun QuizScreen(
     var answered by remember { mutableStateOf(false) }
     var score by remember { mutableIntStateOf(0) }
     var feedback by remember { mutableStateOf<String?>(null) }
-    var timeLeft by remember(subject.id) { mutableIntStateOf(60) }
+    var timeLeft by remember(subject.id) { mutableIntStateOf(180) }
     var finished by remember { mutableStateOf(false) }
+
+    val question = questions[currentIndex]
+    val optionsWithCorrectness = remember(currentIndex) {
+        question.options.mapIndexed { index, s -> s to (index == question.correctIndex) }.shuffled()
+    }
 
     fun finishQuiz(timedOut: Boolean) {
         if (finished) return
@@ -595,8 +582,6 @@ private fun QuizScreen(
             finishQuiz(timedOut = true)
         }
     }
-
-    val question = questions[currentIndex]
 
     Column(
         modifier = Modifier
@@ -639,10 +624,11 @@ private fun QuizScreen(
             Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(text = question.prompt, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = DeepSlate)
 
-                question.options.forEachIndexed { index, option ->
+                optionsWithCorrectness.forEachIndexed { index, pair ->
+                    val (option, isCorrect) = pair
                     val selected = selectedOption == index
                     val background = when {
-                        answered && index == question.correctIndex -> LocalQuizColors.current.correct
+                        answered && isCorrect -> LocalQuizColors.current.correct
                         selected -> LocalQuizColors.current.selected
                         else -> Paper
                     }
@@ -698,18 +684,19 @@ private fun QuizScreen(
                 modifier = Modifier.weight(1f)
             ) {
                 if (!answered) {
-                    val picked = selectedOption
-                    if (picked == null) {
+                    val pickedIndex = selectedOption
+                    if (pickedIndex == null) {
                         feedback = "Choose an answer first."
                         return@ActionButton
                     }
                     answered = true
-                    val correct = picked == question.correctIndex
-                    if (correct) {
+                    val isCorrect = optionsWithCorrectness[pickedIndex].second
+                    if (isCorrect) {
                         score += 1
                         feedback = if (soundEffects) "Correct! +1" else "Correct!"
                     } else {
-                        feedback = "Incorrect! Answer: ${question.options[question.correctIndex]}"
+                        val correctText = optionsWithCorrectness.find { it.second }?.first ?: "Unknown"
+                        feedback = "Incorrect! Answer: $correctText"
                     }
                 } else {
                     if (currentIndex == questions.lastIndex) {
@@ -863,6 +850,7 @@ private fun ResourcesScreen(
 @Composable
 private fun LeaderboardScreen(
     entries: List<ScoreEntry>,
+    onRemoveEntry: (Int) -> Unit,
     onBackClick: () -> Unit
 ) {
     Column(
@@ -884,7 +872,7 @@ private fun LeaderboardScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        entries.take(10).forEachIndexed { index, entry ->
+        entries.forEachIndexed { index, entry ->
             Card(
                 colors = CardDefaults.cardColors(containerColor = SoftWhite),
                 shape = RoundedCornerShape(18.dp),
@@ -899,7 +887,13 @@ private fun LeaderboardScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = "${index + 1}", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Slate)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = "${index + 1}", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Slate)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        IconButton(onClick = { onRemoveEntry(index) }) {
+                            Text(text = "🗑", fontSize = 24.sp, color = Danger)
+                        }
+                    }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(text = entry.playerName, fontWeight = FontWeight.Bold, color = DeepSlate)
                         Text(text = entry.subjectName, color = Slate)
