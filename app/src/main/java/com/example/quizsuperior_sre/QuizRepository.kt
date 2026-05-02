@@ -197,6 +197,150 @@ object QuizRepository {
                 r("Software Engineering Basics", "A broad review of software engineering ideas.", "https://www.geeksforgeeks.org/software-engineering/"),
                 r("Requirements Analysis", "Notes about writing useful system requirements.", "https://www.techtarget.com/searchcio/definition/requirements-analysis")
             )
+        ),
+        subject(
+            id = "datastructures",
+            group = "Computer Science",
+            name = "Data Structures",
+            description = "Arrays, lists, stacks, queues, trees, and basic storage concepts.",
+            questions = listOf(
+                q("Which data structure uses LIFO order?", listOf("Queue", "Stack", "Array", "Tree"), 1, "A stack uses Last In, First Out order."),
+                q("Which data structure uses FIFO order?", listOf("Stack", "Queue", "Graph", "Tree"), 1, "A queue uses First In, First Out order."),
+                q("What is an array?", listOf("A fixed collection of indexed elements", "A loop type", "A database table", "A sorting algorithm"), 0, "An array stores elements by index."),
+                q("Which structure has nodes connected by edges?", listOf("Graph", "Array", "Stack", "String"), 0, "Graphs contain vertices/nodes connected by edges."),
+                q("What is the root of a tree?", listOf("The first/top node", "The last leaf", "A duplicate node", "An edge"), 0, "The root is the top node of a tree."),
+                q("Which operation adds an item to a stack?", listOf("push", "pop", "peek", "poll"), 0, "Push adds an item to the top of a stack."),
+                q("Which operation removes an item from a stack?", listOf("push", "pop", "offer", "enqueue"), 1, "Pop removes the top item from a stack."),
+                q("Which data structure is often used for undo features?", listOf("Stack", "Queue", "Set", "Map"), 0, "Undo actions are commonly stored in a stack."),
+                q("Which collection stores key-value pairs?", listOf("List", "Map", "Stack", "Queue"), 1, "A map stores keys connected to values."),
+                q("Which structure avoids duplicate values?", listOf("Set", "List", "Array", "Queue"), 0, "A set is commonly used to store unique values.")
+            ),
+            cards = listOf(
+                c("Stack", "A stack follows LIFO: Last In, First Out. Common operations are push, pop, and peek."),
+                c("Queue", "A queue follows FIFO: First In, First Out. It is useful for waiting lines and task scheduling."),
+                c("Trees and Graphs", "Trees organize data hierarchically. Graphs model connections between objects.")
+            ),
+            resources = listOf(
+                r("Oracle Collections Tutorial", "Official Java Collections tutorial covering interfaces, implementations, and algorithms.", "https://docs.oracle.com/javase/tutorial/collections/index.html"),
+                r("Oracle Collections Overview", "Overview of Java's unified framework for representing and manipulating collections.", "https://docs.oracle.com/javase/8/docs/technotes/guides/collections/overview.html"),
+                r("Java Collections on dev.java", "Modern Java learning material for collections and data storage.", "https://dev.java/learn/api/collections-framework/")
+            )
+        ),
+
+        subject(
+            id = "algorithms",
+            group = "Computer Science",
+            name = "Algorithms",
+            description = "Sorting, searching, Big-O, recursion, and problem-solving steps.",
+            questions = listOf(
+                q("What is an algorithm?", listOf("A step-by-step solution", "A programming error", "A hardware device", "A database"), 0, "An algorithm is a clear set of steps for solving a problem."),
+                q("What does Big-O describe?", listOf("Code color", "Algorithm efficiency", "Screen size", "Variable type"), 1, "Big-O describes how runtime or memory grows as input size increases."),
+                q("Which search requires sorted data?", listOf("Linear search", "Binary search", "Random search", "Depth search"), 1, "Binary search works by repeatedly dividing sorted data."),
+                q("Which sorting algorithm repeatedly swaps neighboring elements?", listOf("Bubble sort", "Binary search", "Merge sort", "DFS"), 0, "Bubble sort compares and swaps adjacent elements."),
+                q("What is recursion?", listOf("A function calling itself", "A loop that never starts", "A database command", "A UI component"), 0, "Recursion happens when a function calls itself."),
+                q("Which case stops recursion?", listOf("Base case", "Loop case", "Error case", "Import case"), 0, "A base case prevents recursion from continuing forever."),
+                q("Which algorithm idea splits problems into smaller parts?", listOf("Divide and conquer", "Random guessing", "Hard coding", "Compilation"), 0, "Divide and conquer breaks problems into smaller subproblems."),
+                q("What is linear search?", listOf("Checking items one by one", "Dividing sorted data", "Sorting numbers", "Hashing passwords"), 0, "Linear search checks each item until it finds a match."),
+                q("Which sort is commonly based on divide and conquer?", listOf("Merge sort", "Bubble sort", "Selection sort", "Linear sort"), 0, "Merge sort divides, sorts, and merges parts."),
+                q("What usually happens if an algorithm is O(n)?", listOf("Work grows roughly with input size", "It always takes one step", "It never finishes", "It uses no memory"), 0, "O(n) means work grows linearly with input size.")
+            ),
+            cards = listOf(
+                c("Big-O", "Big-O describes growth. O(1) is constant, O(n) is linear, and O(n²) grows much faster."),
+                c("Binary Search", "Binary search repeatedly cuts a sorted list in half to find a target value."),
+                c("Recursion", "Recursion needs a base case and a recursive case. Without a base case, it may run forever.")
+            ),
+            resources = listOf(
+                r("Khan Academy Algorithms", "Beginner-friendly algorithm lessons covering searching, sorting, and efficiency.", "https://www.khanacademy.org/computing/computer-science/algorithms"),
+                r("Khan Academy Recursion", "Explanation of recursive algorithms and base cases.", "https://www.khanacademy.org/computing/computer-science/algorithms/recursive-algorithms/a/recursion"),
+                r("AP CSP Algorithms", "Intro algorithms, flowcharts, pseudocode, correctness, and efficiency.", "https://www.khanacademy.org/computing/ap-computer-science-principles/algorithms-101")
+            )
+        ),
+
+        subject(
+            id = "sql",
+            group = "Computer Science",
+            name = "Databases / SQL",
+            description = "Tables, queries, joins, keys, and database basics.",
+            questions = listOf(
+                q("What does SQL stand for?", listOf("Structured Query Language", "Simple Question Logic", "System Queue List", "Stored Query Loop"), 0, "SQL stands for Structured Query Language."),
+                q("Which SQL command retrieves data?", listOf("SELECT", "INSERT", "DELETE", "UPDATE"), 0, "SELECT is used to query and retrieve data."),
+                q("Which SQL command adds a new row?", listOf("INSERT", "DROP", "JOIN", "WHERE"), 0, "INSERT adds new data to a table."),
+                q("Which clause filters rows?", listOf("WHERE", "ORDER BY", "CREATE", "TABLE"), 0, "WHERE filters rows based on a condition."),
+                q("What is a primary key?", listOf("A unique row identifier", "A duplicate column", "A password", "A table backup"), 0, "A primary key uniquely identifies each row."),
+                q("What does JOIN do?", listOf("Combines related table data", "Deletes rows", "Creates passwords", "Renames a database"), 0, "JOIN connects rows from related tables."),
+                q("Which command changes existing rows?", listOf("UPDATE", "INSERT", "SELECT", "CREATE"), 0, "UPDATE modifies existing data."),
+                q("Which command removes rows?", listOf("DELETE", "SELECT", "JOIN", "ALTER"), 0, "DELETE removes rows from a table."),
+                q("What is a foreign key?", listOf("A field linking to another table", "A hidden password", "A duplicate database", "A programming loop"), 0, "A foreign key connects one table to another."),
+                q("Which keyword sorts query results?", listOf("ORDER BY", "WHERE", "INSERT", "VALUES"), 0, "ORDER BY sorts the returned rows.")
+            ),
+            cards = listOf(
+                c("SELECT", "SELECT retrieves data from one or more tables. WHERE filters the results."),
+                c("Keys", "Primary keys uniquely identify rows. Foreign keys connect related tables."),
+                c("JOIN", "JOIN is used when data is split across multiple related tables.")
+            ),
+            resources = listOf(
+                r("W3Schools SQL Tutorial", "Beginner-friendly SQL syntax, examples, and practice.", "https://www.w3schools.com/sql/"),
+                r("W3Schools MySQL Tutorial", "Intro to MySQL and relational database usage.", "https://www.w3schools.com/MYSQL/default.asp"),
+                r("MySQL SQL Basics", "Basic SQL commands used with MySQL databases.", "https://www.w3schools.com/mysql/mysql_sql.asp")
+            )
+        ),
+
+        subject(
+            id = "cybersecurity",
+            group = "Computer Science",
+            name = "Cybersecurity",
+            description = "Passwords, hashing, encryption, malware, risk, and security basics.",
+            questions = listOf(
+                q("What is phishing?", listOf("A social engineering attack", "A sorting algorithm", "A database backup", "A programming language"), 0, "Phishing tricks users into revealing sensitive information."),
+                q("What does encryption do?", listOf("Protects data by making it unreadable without a key", "Deletes files", "Speeds up Wi-Fi", "Creates a database"), 0, "Encryption protects data confidentiality."),
+                q("What is hashing commonly used for?", listOf("Password storage and integrity checks", "Drawing UI screens", "Sorting lists only", "Playing audio"), 0, "Hashes are often used to verify passwords and file integrity."),
+                q("Which is a strong password practice?", listOf("Use long unique passwords", "Reuse one password", "Use your name only", "Share passwords"), 0, "Long unique passwords reduce account compromise risk."),
+                q("What does MFA stand for?", listOf("Multi-Factor Authentication", "Main File Access", "Multiple Folder App", "Manual Firewall Alert"), 0, "MFA requires more than one factor to verify identity."),
+                q("What is malware?", listOf("Malicious software", "A safe backup", "A coding style", "A database key"), 0, "Malware is software designed to harm systems or steal data."),
+                q("What does a firewall help do?", listOf("Control network traffic", "Write code automatically", "Increase screen brightness", "Format text"), 0, "Firewalls filter network traffic based on rules."),
+                q("What is least privilege?", listOf("Only giving users access they need", "Giving everyone admin rights", "Deleting accounts daily", "Using no passwords"), 0, "Least privilege limits access to what is necessary."),
+                q("Which security goal protects data from unauthorized viewing?", listOf("Confidentiality", "Availability", "Formatting", "Compilation"), 0, "Confidentiality keeps data private."),
+                q("Which security goal keeps systems usable when needed?", listOf("Availability", "Syntax", "Inheritance", "Indexing"), 0, "Availability means systems and data are accessible when needed.")
+            ),
+            cards = listOf(
+                c("CIA Triad", "Confidentiality protects privacy, integrity protects correctness, and availability keeps systems usable."),
+                c("Authentication", "Authentication verifies identity. MFA improves security by requiring more than one proof."),
+                c("Phishing", "Phishing uses fake messages, links, or websites to trick people into giving up information.")
+            ),
+            resources = listOf(
+                r("NIST Cybersecurity Framework", "Official NIST framework for managing cybersecurity risk.", "https://www.nist.gov/cyberframework"),
+                r("NIST CSF 2.0 Small Business", "NIST cybersecurity framework resources focused on small businesses.", "https://www.nist.gov/itl/smallbusinesscyber/nist-cybersecurity-framework-0"),
+                r("NIST CSF 2.0 PDF", "Official Cybersecurity Framework 2.0 publication.", "https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf")
+            )
+        ),
+
+        subject(
+            id = "statistics",
+            group = "Mathematics",
+            name = "Statistics",
+            description = "Mean, median, probability, samples, distributions, and data interpretation.",
+            questions = listOf(
+                q("What is the mean?", listOf("The average", "The middle value", "The most common value", "The largest value"), 0, "The mean is found by adding values and dividing by the number of values."),
+                q("What is the median?", listOf("The middle value", "The average", "The smallest value", "The range"), 0, "The median is the middle value when data is ordered."),
+                q("What is the mode?", listOf("The most frequent value", "The average", "The middle value", "The total"), 0, "The mode is the value that appears most often."),
+                q("What is range?", listOf("Highest value minus lowest value", "Average of all values", "Middle value", "Most frequent value"), 0, "Range measures spread by subtracting minimum from maximum."),
+                q("Probability values usually range from ___.", listOf("0 to 1", "1 to 1000", "-10 to 10", "5 to 50"), 0, "Probability ranges from 0 impossible to 1 certain."),
+                q("What is a sample?", listOf("A smaller group selected from a population", "The entire population", "A guaranteed result", "A graph only"), 0, "A sample is a subset used to study a larger population."),
+                q("What does a bar graph compare?", listOf("Categories", "Only passwords", "Only source code", "Only maps"), 0, "Bar graphs compare quantities across categories."),
+                q("What does standard deviation measure?", listOf("Spread from the mean", "The middle value", "The most common value", "The number of columns"), 0, "Standard deviation measures how spread out values are."),
+                q("What is an outlier?", listOf("A value far from most others", "The average", "The exact center", "The first value only"), 0, "Outliers are unusually high or low compared with the rest of the data."),
+                q("If an event is impossible, its probability is ___.", listOf("0", "1", "50", "100"), 0, "Impossible events have probability 0.")
+            ),
+            cards = listOf(
+                c("Center", "Mean is the average, median is the middle, and mode is the most frequent value."),
+                c("Spread", "Range and standard deviation describe how spread out a data set is."),
+                c("Probability", "Probability describes how likely an event is, from 0 impossible to 1 certain.")
+            ),
+            resources = listOf(
+                r("Khan Academy Statistics and Probability", "Intro lessons on probability models, samples, and data.", "https://www.khanacademy.org/kmap/measurement-and-data-h/md224-statistics-and-probability"),
+                r("Khan Academy Statistics Videos", "Video lessons covering descriptive statistics and probability.", "https://www.youtube.com/channel/UCRXuOXLW3LcQLWvxbZiIZ0w/featured"),
+                r("Statistics: The Average", "Khan Academy video on mean, median, and mode.", "https://www.youtube.com/watch?v=uhxtUt_-GyM")
+            )
         )
     )
 
