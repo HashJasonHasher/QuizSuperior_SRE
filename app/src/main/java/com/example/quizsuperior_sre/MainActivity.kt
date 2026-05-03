@@ -583,7 +583,7 @@ private fun ChooseScreen(
                     errorMessage = "Select exactly one subject for Resources."
                     onInvalidAction()
                 } else {
-                    onOpenCards()
+                    onOpenResources()
                 }
             }
 
