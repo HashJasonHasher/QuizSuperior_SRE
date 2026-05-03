@@ -110,7 +110,7 @@ private val Success @Composable get() = LocalQuizColors.current.success
 sealed class AppScreen {
     object Title : AppScreen()
     object Choose : AppScreen()
-    data class Quiz(val subjectId: String) : AppScreen()
+    data class Quiz(val subjectIds: List<String>) : AppScreen()
     data class Cards(val subjectId: String) : AppScreen()
     data class Resources(val subjectId: String) : AppScreen()
     object Leaderboard : AppScreen()
@@ -187,14 +187,14 @@ fun QuizSuperiorApp(
     }
 
     var screen by remember { mutableStateOf<AppScreen>(AppScreen.Title) }
-    var selectedSubjectId by remember { mutableStateOf<String?>(null) }
+    var selectedSubjectIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var searchQuery by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
     var soundEffects by remember { mutableStateOf(prefs.getBoolean("sound_effects", true)) }
     var music by remember { mutableStateOf(prefs.getBoolean("music", false)) }
     var hints by remember { mutableStateOf(prefs.getBoolean("hints", true)) }
 
-    val selectedSubject = selectedSubjectId?.let { id -> subjects.firstOrNull { it.id == id } }
+    val selectedSubjects = subjects.filter { it.id in selectedSubjectIds }
 
     if (showSettings) {
         SettingsDialog(
@@ -245,25 +245,32 @@ fun QuizSuperiorApp(
                 )
 
                 AppScreen.Choose -> ChooseScreen(
-                    selectedSubject = selectedSubject,
+                    selectedSubjects = selectedSubjects,
                     searchQuery = searchQuery,
                     onSearchQueryChange = { searchQuery = it },
                     subjects = subjects,
                     onBackClick = { screen = AppScreen.Title },
-                    onSubjectSelected = { selectedSubjectId = it.id },
+                    onSubjectSelected = { subject ->
+                        selectedSubjectIds =
+                            if (subject.id in selectedSubjectIds) {
+                                selectedSubjectIds - subject.id
+                            } else {
+                                selectedSubjectIds + subject.id
+                            }
+                    },
                     onStartQuiz = {
-                        if (selectedSubject != null) {
-                            screen = AppScreen.Quiz(selectedSubject.id)
+                        if (selectedSubjects.isNotEmpty()) {
+                            screen = AppScreen.Quiz(selectedSubjects.map { it.id })
                         }
                     },
                     onOpenCards = {
-                        if (selectedSubject != null) {
-                            screen = AppScreen.Cards(selectedSubject.id)
+                        if (selectedSubjects.size == 1) {
+                            screen = AppScreen.Cards(selectedSubjects.first().id)
                         }
                     },
                     onOpenResources = {
-                        if (selectedSubject != null) {
-                            screen = AppScreen.Resources(selectedSubject.id)
+                        if (selectedSubjects.size == 1) {
+                            screen = AppScreen.Resources(selectedSubjects.first().id)
                         }
                     },
                     onInvalidAction = {
@@ -272,14 +279,36 @@ fun QuizSuperiorApp(
                 )
 
                 is AppScreen.Quiz -> {
-                    val subject = subjects.first { it.id == current.subjectId }
+                    val quizSubjects = subjects.filter { it.id in current.subjectIds }
+
+                    val mixedSubject = Subject(
+                        id = quizSubjects.joinToString("_") { it.id },
+                        group = "Mixed",
+                        name = if (quizSubjects.size == 1) {
+                            quizSubjects.first().name
+                        } else {
+                            "Mixed Quiz"
+                        },
+                        description = if (quizSubjects.size == 1) {
+                            quizSubjects.first().description
+                        } else {
+                            quizSubjects.joinToString(", ") { it.name }
+                        },
+                        questions = quizSubjects
+                            .flatMap { it.questions }
+                            .shuffled()
+                            .take(10),
+                        cards = emptyList(),
+                        resources = emptyList()
+                    )
+
                     QuizScreen(
-                        subject = subject,
+                        subject = mixedSubject,
                         soundEffects = soundEffects,
                         hints = hints,
                         onBackClick = { screen = AppScreen.Choose },
                         onFinished = { score, total, timedOut ->
-                            screen = AppScreen.Result(score, total, subject.name, timedOut)
+                            screen = AppScreen.Result(score, total, mixedSubject.name, timedOut)
                         }
                     )
                 }
@@ -323,9 +352,11 @@ fun QuizSuperiorApp(
                         screen = AppScreen.Leaderboard
                     },
                     onPlayAgain = {
-                        selectedSubjectId?.let { id ->
-                            screen = AppScreen.Quiz(id)
-                        } ?: run { screen = AppScreen.Choose }
+                        if (selectedSubjectIds.isNotEmpty()) {
+                            screen = AppScreen.Quiz(selectedSubjectIds.toList())
+                        } else {
+                            screen = AppScreen.Choose
+                        }
                     },
                     onHome = { screen = AppScreen.Title },
                     onLeaderboard = { screen = AppScreen.Leaderboard }
@@ -402,7 +433,7 @@ private fun TitleScreen(
 
 @Composable
 private fun ChooseScreen(
-    selectedSubject: Subject?,
+    selectedSubjects: List<Subject>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     subjects: List<Subject>,
@@ -421,6 +452,7 @@ private fun ChooseScreen(
                     it.description.contains(searchQuery, ignoreCase = true)
         }
     }
+    val selectedSubjectIds = selectedSubjects.map { it.id }.toSet()
 
     Column(
         modifier = Modifier
@@ -461,16 +493,24 @@ private fun ChooseScreen(
                 singleLine = true
             )
 
-            selectedSubject?.let {
+            if (selectedSubjects.isNotEmpty()) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Paper),
                     shape = RoundedCornerShape(22.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
-                        Text(text = "Selected", fontWeight = FontWeight.Bold, color = Slate)
-                        Text(text = it.name, fontSize = 24.sp, fontWeight = FontWeight.Black, color = DeepSlate)
-                        Text(text = it.description, color = Slate)
+                        Text(text = "Selected Topics", fontWeight = FontWeight.Bold, color = Slate)
+                        Text(
+                            text = selectedSubjects.joinToString(", ") { it.name },
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Black,
+                            color = DeepSlate
+                        )
+                        Text(
+                            text = "Quiz will pull 10 questions from the selected topics.",
+                            color = Slate
+                        )
                     }
                 }
             }
@@ -501,7 +541,7 @@ private fun ChooseScreen(
                     groupSubjects.forEach { subject ->
                         SubjectTile(
                             subject = subject,
-                            selected = selectedSubject?.id == subject.id,
+                            selected = subject.id in selectedSubjectIds,
                             onClick = {
                                 onSubjectSelected(subject)
                                 errorMessage = null
@@ -521,7 +561,7 @@ private fun ChooseScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 ActionButton(text = "START QUIZZING", modifier = Modifier.weight(1f)) {
-                    if (selectedSubject == null) {
+                    if (selectedSubjects.isEmpty()) {
                         errorMessage = "Select a subject first."
                         onInvalidAction()
                     } else {
@@ -529,8 +569,8 @@ private fun ChooseScreen(
                     }
                 }
                 ActionButton(text = "CARDS", modifier = Modifier.weight(1f)) {
-                    if (selectedSubject == null) {
-                        errorMessage = "Select a subject first."
+                    if (selectedSubjects.size != 1) {
+                        errorMessage = "Select exactly one subject for cards."
                         onInvalidAction()
                     } else {
                         onOpenCards()
@@ -539,11 +579,11 @@ private fun ChooseScreen(
             }
 
             ActionButton(text = "RESOURCES", modifier = Modifier.fillMaxWidth()) {
-                if (selectedSubject == null) {
-                    errorMessage = "Select a subject first."
+                if (selectedSubjects.size != 1) {
+                    errorMessage = "Select exactly one subject for Resources."
                     onInvalidAction()
                 } else {
-                    onOpenResources()
+                    onOpenCards()
                 }
             }
 
