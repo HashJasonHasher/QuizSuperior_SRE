@@ -1,7 +1,12 @@
 package com.example.quizsuperior_sre
 
-// MainActivity.kt contains the app entry point, theme color setup, screen navigation, and all Jetpack Compose UI screens.
-// The app uses manual screen state with the AppScreen sealed class instead of a separate navigation library.
+/**
+ * MainActivity.kt is the primary UI engine for the Quiz Superior app.
+ * 
+ * It contains the app entry point, custom theme color definitions, screen navigation logic,
+ * and all Jetpack Compose UI components. The app follows a single-activity architecture,
+ * where the 'screen' state variable determines which composable is currently active.
+ */
 
 import android.app.Activity
 import android.content.Context
@@ -62,8 +67,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 
-// Holds the custom color palette used throughout the quiz app.
-// The app provides either LightQuizColors or DarkQuizColors depending on the dark mode setting.
+/**
+ * Holds the custom color palette used throughout the quiz app.
+ * We use a custom object instead of the default Material3 color scheme to maintain
+ * a specific "paper and clay" aesthetic.
+ */
 data class QuizColors(
     val paper: Color,
     val clay: Color,
@@ -76,12 +84,18 @@ data class QuizColors(
     val correct: Color
 )
 
-// CompositionLocal used to make QuizColors available to every composable without passing colors manually as parameters.
+/**
+ * CompositionLocal used to provide [QuizColors] to the entire composable tree.
+ * This avoids passing the color palette manually as a parameter to every UI function.
+ */
 val LocalQuizColors = staticCompositionLocalOf<QuizColors> {
     error("No QuizColors provided")
 }
 
-// Light mode version of the custom app color palette.
+/** 
+ * Light mode version of the custom app color palette.
+ * Uses warmer, lighter tones.
+ */
 private val LightQuizColors = QuizColors(
     paper = Color(0xFFF4EBC8),
     clay = Color(0xFFD28A5B),
@@ -94,7 +108,10 @@ private val LightQuizColors = QuizColors(
     correct = Color(0xFFDFF3E0)
 )
 
-// Dark mode version of the custom app color palette.
+/** 
+ * Dark mode version of the custom app color palette.
+ * Uses deeper, cooler tones for reduced eye strain.
+ */
 private val DarkQuizColors = QuizColors(
     paper = Color(0xFF2D3748),
     clay = Color(0xFF1A202C),
@@ -107,8 +124,10 @@ private val DarkQuizColors = QuizColors(
     correct = Color(0xFF2D4F35)
 )
 
-// Convenience getters for the current theme colors.
-// These make the UI code easier to read than repeatedly typing LocalQuizColors.current.colorName.
+/**
+ * Convenience property getters for the current theme colors.
+ * These make the UI code much more readable (e.g., using 'Paper' instead of 'LocalQuizColors.current.paper').
+ */
 private val Paper @Composable get() = LocalQuizColors.current.paper
 private val Clay @Composable get() = LocalQuizColors.current.clay
 private val Slate @Composable get() = LocalQuizColors.current.slate
@@ -117,39 +136,46 @@ private val SoftWhite @Composable get() = LocalQuizColors.current.softWhite
 private val Danger @Composable get() = LocalQuizColors.current.danger
 private val Success @Composable get() = LocalQuizColors.current.success
 
-// Defines every screen/state the app can display.
-// The screen variable in QuizSuperiorApp stores one of these values to control navigation.
+/**
+ * Defines every screen and navigation state the app can display.
+ * Using a sealed class ensures that we only navigate to valid, predefined screens.
+ */
 sealed class AppScreen {
-    object Title : AppScreen()
-    object Choose : AppScreen()
-    data class Quiz(val subjectIds: List<String>) : AppScreen()
-    data class Cards(val subjectId: String) : AppScreen()
-    data class Resources(val subjectId: String) : AppScreen()
-    object Leaderboard : AppScreen()
-    data class Result(val score: Int, val total: Int, val subjectName: String, val timedOut: Boolean) : AppScreen()
+    object Title : AppScreen() // The main home screen.
+    object Choose : AppScreen() // The subject selection screen.
+    data class Quiz(val subjectIds: List<String>) : AppScreen() // The active quiz taking screen.
+    data class Cards(val subjectId: String) : AppScreen() // The flashcard study screen.
+    data class Resources(val subjectId: String) : AppScreen() // The external resources screen.
+    object Leaderboard : AppScreen() // The saved scores screen.
+    data class Result(val score: Int, val total: Int, val subjectName: String, val timedOut: Boolean) : AppScreen() // The quiz wrap-up screen.
 }
 
-// Main Android activity. This is the first Kotlin class Android launches when the app opens.
+/**
+ * The main Android Activity. This is the entry point that Android OS calls when launching the app.
+ */
 class MainActivity : ComponentActivity() {
-    // Called when the activity is created. Sets up edge-to-edge display, theme state, and Compose content.
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Extends the app UI to the very edges of the screen (under status/nav bars).
         enableEdgeToEdge()
 
         setContent {
-            // Loads the saved dark mode preference so the app remembers the user's theme choice.
+            // Persists the dark mode choice across app restarts using Activity-level SharedPreferences.
             var darkTheme by remember {
                 mutableStateOf(getPreferences(MODE_PRIVATE).getBoolean("dark_mode", false))
             }
 
-            // Chooses the correct custom color palette based on the dark mode switch.
+            // Picks the color set based on the current theme state.
             val quizColors = if (darkTheme) DarkQuizColors else LightQuizColors
 
+            // Provides the custom colors and applies the Material3 theme.
             CompositionLocalProvider(LocalQuizColors provides quizColors) {
                 QuizSuperior_SRETheme(darkTheme = darkTheme) {
                     QuizSuperiorApp(
                         isDarkTheme = darkTheme,
-                        onDarkThemeChange = {
+                        onDarkThemeChange = { 
                             darkTheme = it
                             getPreferences(MODE_PRIVATE).edit { putBoolean("dark_mode", it) }
                         }
@@ -160,28 +186,31 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Root composable for the entire application.
+ * 
+ * It manages global state including navigation ([screen]), subject selection, 
+ * settings (sound, music, hints), and the leaderboard data.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
-// Root composable for the entire app.
-// It owns global app state, screen navigation, selected subjects, settings, and leaderboard storage.
 @Composable
 fun QuizSuperiorApp(
     isDarkTheme: Boolean,
     onDarkThemeChange: (Boolean) -> Unit
-
 ) {
-    // Accesses Android context/activity so the app can use SharedPreferences, URLs, and exit behavior.
     val context = LocalContext.current
     val activity = context as Activity
-
     val uriHandler = LocalUriHandler.current
-    // Loads the list of available subjects once for the current composition.
+    
+    // Static data from our repository.
     val subjects = remember { QuizRepository.sampleSubjects() }
 
-    // SharedPreferences stores persistent app data such as leaderboard scores and settings.
+    // Persistent storage for leaderboard and settings.
     val prefs = remember { context.getSharedPreferences("quiz_prefs", Context.MODE_PRIVATE) }
 
-    // Reads leaderboard entries from SharedPreferences.
-    // If no saved data exists, default sample scores are shown.
+    /**
+     * Deserializes the leaderboard string from SharedPreferences into a list of [ScoreEntry].
+     */
     fun loadLeaderboard(): List<ScoreEntry> {
         val data = prefs.getString("leaderboard", null) ?: return listOf(
             ScoreEntry("Alex", "Calculus 1", 10, 10),
@@ -200,31 +229,36 @@ fun QuizSuperiorApp(
         }
     }
 
-    // Saves leaderboard entries as one serialized string in SharedPreferences.
+    /**
+     * Serializes the current leaderboard list into a string and saves it to SharedPreferences.
+     */
     fun saveLeaderboard(entries: List<ScoreEntry>) {
         val serialized = entries.joinToString(";") { "${it.playerName}|${it.subjectName}|${it.correct}|${it.total}" }
         prefs.edit { putString("leaderboard", serialized) }
     }
 
-    // Mutable list that updates the leaderboard UI whenever scores are added or removed.
+    // Observable list of leaderboard entries.
     val leaderboard = remember {
         mutableStateListOf<ScoreEntry>().apply { addAll(loadLeaderboard()) }
     }
 
-    // Current screen. Changing this value is how the app navigates between pages.
+    // Core navigation state.
     var screen by remember { mutableStateOf<AppScreen>(AppScreen.Title) }
-    // Stores all selected subject IDs so quizzes can combine multiple topics.
+    
+    // UI state for search and settings.
     var selectedSubjectIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var searchQuery by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
+    
+    // User preferences.
     var soundEffects by remember { mutableStateOf(prefs.getBoolean("sound_effects", true)) }
     var music by remember { mutableStateOf(prefs.getBoolean("music", false)) }
     var hints by remember { mutableStateOf(prefs.getBoolean("hints", true)) }
 
-    // Converts selected IDs into full Subject objects for the UI and quiz creation.
+    // Helper to get full Subject objects for selected IDs.
     val selectedSubjects = subjects.filter { it.id in selectedSubjectIds }
 
-    // Shows the settings dialog only when the gear button has been clicked.
+    // Logic for displaying the modal settings dialog.
     if (showSettings) {
         SettingsDialog(
             soundEffects = soundEffects,
@@ -248,27 +282,21 @@ fun QuizSuperiorApp(
         )
     }
 
-    // Scaffold provides one shared top app bar and background for every screen.
-    // This avoids adding a toolbar separately to each screen.
+    // The main Scaffold layout provides consistent top-level bars and backgrounds.
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Paper
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Paper)
             )
         },
         containerColor = Clay
     ) { innerPadding ->
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Chooses which screen composable to display based on the current AppScreen value.
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            
+            // NAVIGATION ENGINE: Switches content based on the current 'screen' value.
             when (val current = screen) {
+                
                 AppScreen.Title -> TitleScreen(
                     onStartClick = { screen = AppScreen.Choose },
                     onLeadClick = { screen = AppScreen.Leaderboard },
@@ -283,12 +311,11 @@ fun QuizSuperiorApp(
                     subjects = subjects,
                     onBackClick = { screen = AppScreen.Title },
                     onSubjectSelected = { subject ->
-                        selectedSubjectIds =
-                            if (subject.id in selectedSubjectIds) {
-                                selectedSubjectIds - subject.id
-                            } else {
-                                selectedSubjectIds + subject.id
-                            }
+                        selectedSubjectIds = if (subject.id in selectedSubjectIds) {
+                            selectedSubjectIds - subject.id
+                        } else {
+                            selectedSubjectIds + subject.id
+                        }
                     },
                     onStartQuiz = {
                         if (selectedSubjects.isNotEmpty()) {
@@ -305,34 +332,18 @@ fun QuizSuperiorApp(
                             screen = AppScreen.Resources(selectedSubjects.first().id)
                         }
                     },
-                    onInvalidAction = {
-                        // handled inside screen by local error message
-                    }
+                    onInvalidAction = { /* Error handled internally by screen */ }
                 )
 
                 is AppScreen.Quiz -> {
-                    // Finds all selected subjects and combines their questions into a temporary mixed quiz.
+                    // Logic to handle single or multiple (mixed) subject quizzes.
                     val quizSubjects = subjects.filter { it.id in current.subjectIds }
-
-                    // Temporary Subject used only for the quiz screen.
-                    // It keeps the QuizScreen reusable for both single-topic and mixed-topic quizzes.
                     val mixedSubject = Subject(
                         id = quizSubjects.joinToString("_") { it.id },
                         group = "Mixed",
-                        name = if (quizSubjects.size == 1) {
-                            quizSubjects.first().name
-                        } else {
-                            "Mixed Quiz"
-                        },
-                        description = if (quizSubjects.size == 1) {
-                            quizSubjects.first().description
-                        } else {
-                            quizSubjects.joinToString(", ") { it.name }
-                        },
-                        questions = quizSubjects
-                            .flatMap { it.questions }
-                            .shuffled()
-                            .take(10),
+                        name = if (quizSubjects.size == 1) quizSubjects.first().name else "Mixed Quiz",
+                        description = if (quizSubjects.size == 1) quizSubjects.first().description else quizSubjects.joinToString(", ") { it.name },
+                        questions = quizSubjects.flatMap { it.questions }.shuffled().take(10),
                         cards = emptyList(),
                         resources = emptyList()
                     )
@@ -350,19 +361,12 @@ fun QuizSuperiorApp(
 
                 is AppScreen.Cards -> {
                     val subject = subjects.first { it.id == current.subjectId }
-                    CardsScreen(
-                        subject = subject,
-                        onBackClick = { screen = AppScreen.Choose }
-                    )
+                    CardsScreen(subject = subject, onBackClick = { screen = AppScreen.Choose })
                 }
 
                 is AppScreen.Resources -> {
                     val subject = subjects.first { it.id == current.subjectId }
-                    ResourcesScreen(
-                        subject = subject,
-                        uriHandler = uriHandler,
-                        onBackClick = { screen = AppScreen.Choose }
-                    )
+                    ResourcesScreen(subject = subject, uriHandler = uriHandler, onBackClick = { screen = AppScreen.Choose })
                 }
 
                 AppScreen.Leaderboard -> LeaderboardScreen(
@@ -400,7 +404,11 @@ fun QuizSuperiorApp(
         }
     }
 }
-// Title/home screen with Start, Score, Exit, and Settings buttons.
+
+/**
+ * The high-level landing screen of the app.
+ * Features the large logo and primary navigation buttons.
+ */
 @Composable
 private fun TitleScreen(
     onStartClick: () -> Unit,
@@ -408,41 +416,21 @@ private fun TitleScreen(
     onExitClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Clay)
-    ) {
+    Column(modifier = Modifier.fillMaxSize().background(Clay)) {
+        // Logo Section
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.34f)
-                .background(Paper),
+            modifier = Modifier.fillMaxWidth().weight(0.34f).background(Paper),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "QUIZ",
-                    fontSize = 72.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Slate,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = "SUPERIOR",
-                    fontSize = 34.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Slate,
-                    letterSpacing = 1.sp
-                )
+                Text(text = "QUIZ", fontSize = 72.sp, fontWeight = FontWeight.Black, color = Slate, letterSpacing = 1.sp)
+                Text(text = "SUPERIOR", fontSize = 34.sp, fontWeight = FontWeight.Black, color = Slate, letterSpacing = 1.sp)
             }
         }
 
+        // Button Section
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.66f)
-                .padding(horizontal = 40.dp, vertical = 56.dp),
+            modifier = Modifier.fillMaxWidth().weight(0.66f).padding(horizontal = 40.dp, vertical = 56.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
@@ -450,14 +438,10 @@ private fun TitleScreen(
             PrimaryMenuButton(text = "SCORE", onClick = onLeadClick)
             PrimaryMenuButton(text = "EXIT", onClick = onExitClick)
             Spacer(modifier = Modifier.weight(1f))
-            IconButton(
-                onClick = onSettingsClick,
-                modifier = Modifier.size(88.dp)
-            ) {
+            // Settings Button
+            IconButton(onClick = onSettingsClick, modifier = Modifier.size(88.dp)) {
                 Box(
-                    modifier = Modifier
-                        .size(88.dp)
-                        .background(Paper, RoundedCornerShape(18.dp)),
+                    modifier = Modifier.size(88.dp).background(Paper, RoundedCornerShape(18.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "⚙", fontSize = 44.sp, color = Slate)
@@ -467,7 +451,10 @@ private fun TitleScreen(
     }
 }
 
-// Subject selection screen. Supports searching, selecting multiple topics, and opening quiz/cards/resources.
+/**
+ * The subject selection screen.
+ * Allows users to browse, search, and select one or more topics for study or quizzing.
+ */
 @Composable
 private fun ChooseScreen(
     selectedSubjects: List<Subject>,
@@ -482,54 +469,40 @@ private fun ChooseScreen(
     onInvalidAction: () -> Unit
 ) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    // Filtering logic based on name, group, or description.
     val filtered = remember(searchQuery, subjects) {
         if (searchQuery.isBlank()) subjects else subjects.filter {
             it.name.contains(searchQuery, ignoreCase = true) ||
-                    it.group.contains(searchQuery, ignoreCase = true) ||
-                    it.description.contains(searchQuery, ignoreCase = true)
+            it.group.contains(searchQuery, ignoreCase = true) ||
+            it.description.contains(searchQuery, ignoreCase = true)
         }
     }
     val selectedSubjectIds = selectedSubjects.map { it.id }.toSet()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Clay)
-            .verticalScroll(rememberScrollState())
-    ) {
+    Column(modifier = Modifier.fillMaxSize().background(Clay).verticalScroll(rememberScrollState())) {
+        // Header
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Paper)
-                .padding(top = 30.dp, bottom = 24.dp),
+            modifier = Modifier.fillMaxWidth().background(Paper).padding(top = 30.dp, bottom = 24.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "CHOOSE",
-                fontSize = 54.sp,
-                fontWeight = FontWeight.Black,
-                color = Slate,
-                letterSpacing = 1.sp
-            )
+            Text(text = "CHOOSE", fontSize = 54.sp, fontWeight = FontWeight.Black, color = Slate, letterSpacing = 1.sp)
         }
 
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 24.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Search Input
             OutlinedTextField(
                 value = searchQuery,
-                onValueChange = {
-                    onSearchQueryChange(it)
-                    errorMessage = null
-                },
+                onValueChange = { onSearchQueryChange(it); errorMessage = null },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Search subjects") },
                 singleLine = true
             )
 
+            // Selection Display
             if (selectedSubjects.isNotEmpty()) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Paper),
@@ -538,100 +511,65 @@ private fun ChooseScreen(
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
                         Text(text = "Selected Topics", fontWeight = FontWeight.Bold, color = Slate)
-                        Text(
-                            text = selectedSubjects.joinToString(", ") { it.name },
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Black,
-                            color = DeepSlate
-                        )
-                        Text(
-                            text = "Quiz will pull 10 questions from the selected topics.",
-                            color = Slate
-                        )
+                        Text(text = selectedSubjects.joinToString(", ") { it.name }, fontSize = 22.sp, fontWeight = FontWeight.Black, color = DeepSlate)
+                        Text(text = "Quiz will pull 10 questions from the selected topics.", color = Slate)
                     }
                 }
             }
 
+            // Subject List (Grouped by category)
             if (filtered.isEmpty()) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = SoftWhite),
                     shape = RoundedCornerShape(22.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "No subjects match \"$searchQuery\".",
-                        modifier = Modifier.padding(18.dp),
-                        color = Danger,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = "No subjects match \"$searchQuery\".", modifier = Modifier.padding(18.dp), color = Danger, fontWeight = FontWeight.Bold)
                 }
             } else {
                 val grouped = filtered.groupBy { it.group }
                 grouped.forEach { (group, groupSubjects) ->
-                    Text(
-                        text = group.uppercase(),
-                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                        fontWeight = FontWeight.Black,
-                        color = Paper,
-                        letterSpacing = 1.sp
-                    )
+                    Text(text = group.uppercase(), modifier = Modifier.padding(top = 4.dp, bottom = 4.dp), fontWeight = FontWeight.Black, color = Paper, letterSpacing = 1.sp)
                     groupSubjects.forEach { subject ->
                         SubjectTile(
                             subject = subject,
                             selected = subject.id in selectedSubjectIds,
-                            onClick = {
-                                onSubjectSelected(subject)
-                                errorMessage = null
-                            }
+                            onClick = { onSubjectSelected(subject); errorMessage = null }
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                     }
                 }
             }
 
+            // Inline error messaging
             errorMessage?.let {
                 Text(text = it, color = Color.White, fontWeight = FontWeight.Bold)
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            // Main Action Buttons
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 ActionButton(text = "START QUIZZING", modifier = Modifier.weight(1f)) {
-                    if (selectedSubjects.isEmpty()) {
-                        errorMessage = "Select a subject first."
-                        onInvalidAction()
-                    } else {
-                        onStartQuiz()
-                    }
+                    if (selectedSubjects.isEmpty()) { errorMessage = "Select a subject first."; onInvalidAction() } else onStartQuiz()
                 }
                 ActionButton(text = "CARDS", modifier = Modifier.weight(1f)) {
-                    if (selectedSubjects.size != 1) {
-                        errorMessage = "Select exactly one subject for cards."
-                        onInvalidAction()
-                    } else {
-                        onOpenCards()
-                    }
+                    if (selectedSubjects.size != 1) { errorMessage = "Select exactly one subject for cards."; onInvalidAction() } else onOpenCards()
                 }
             }
 
             ActionButton(text = "RESOURCES", modifier = Modifier.fillMaxWidth()) {
-                if (selectedSubjects.size != 1) {
-                    errorMessage = "Select exactly one subject for Resources."
-                    onInvalidAction()
-                } else {
-                    onOpenResources()
-                }
+                if (selectedSubjects.size != 1) { errorMessage = "Select exactly one subject for Resources."; onInvalidAction() } else onOpenResources()
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
             BackButton(onClick = onBackClick)
         }
     }
 }
 
-// Main quiz-taking screen. Displays questions, randomized answer choices, timer, feedback, and scoring.
+/**
+ * The interactive quiz taking screen.
+ * Handles question display, answer selection, timer, and score calculation.
+ */
 @Composable
 private fun QuizScreen(
     subject: Subject,
@@ -640,124 +578,87 @@ private fun QuizScreen(
     onBackClick: () -> Unit,
     onFinished: (score: Int, total: Int, timedOut: Boolean) -> Unit
 ) {
-    // Shuffles the questions once for this quiz attempt.
+    // Local state for the current session.
     val questions = remember(subject.id) { subject.questions.shuffled() }
     var currentIndex by remember(subject.id) { mutableIntStateOf(0) }
     var selectedOption by remember { mutableStateOf<Int?>(null) }
     var answered by remember { mutableStateOf(false) }
     var score by remember { mutableIntStateOf(0) }
     var feedback by remember { mutableStateOf<String?>(null) }
-    var timeLeft by remember(subject.id) { mutableIntStateOf(180) }
+    var timeLeft by remember(subject.id) { mutableIntStateOf(180) } // 3-minute timer.
     var finished by remember { mutableStateOf(false) }
 
     val question = questions[currentIndex]
-    // Pairs each answer option with whether it is correct, then shuffles choices for the current question.
+    
+    // Shuffle options once per question so they aren't always in the same order.
     val optionsWithCorrectness = remember(currentIndex) {
         question.options.mapIndexed { index, s -> s to (index == question.correctIndex) }.shuffled()
     }
 
-    // Finishes the quiz exactly once, then reports the final score to the parent screen.
+    /** Helper to conclude the quiz and report results. */
     fun finishQuiz(timedOut: Boolean) {
         if (finished) return
         finished = true
         onFinished(score, questions.size, timedOut)
     }
 
-    // Countdown timer. Runs once for this quiz and ends the quiz automatically if time reaches zero.
+    // Countdown Timer logic.
     LaunchedEffect(subject.id) {
         while (timeLeft > 0 && !finished) {
             kotlinx.coroutines.delay(1000)
             timeLeft -= 1
         }
-        if (!finished && timeLeft == 0) {
-            finishQuiz(timedOut = true)
-        }
+        if (!finished && timeLeft == 0) finishQuiz(timedOut = true)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Clay)
-            .verticalScroll(rememberScrollState())
-            .padding(18.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Paper, RoundedCornerShape(24.dp))
-                .padding(18.dp)
-        ) {
+    Column(modifier = Modifier.fillMaxSize().background(Clay).verticalScroll(rememberScrollState()).padding(18.dp)) {
+        // Quiz Status Header
+        Box(modifier = Modifier.fillMaxWidth().background(Paper, RoundedCornerShape(24.dp)).padding(18.dp)) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(text = subject.name.uppercase(), fontWeight = FontWeight.Black, color = Slate, fontSize = 30.sp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(text = subject.description, color = Slate, textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = "Time Left: ${formatTime(timeLeft)}",
-                    color = if (timeLeft <= 10) Danger else DeepSlate,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = "Question ${currentIndex + 1} / ${questions.size}",
-                    fontWeight = FontWeight.Bold,
-                    color = Slate
-                )
+                Text(text = "Time Left: ${formatTime(timeLeft)}", color = if (timeLeft <= 10) Danger else DeepSlate, fontWeight = FontWeight.Black)
+                Text(text = "Question ${currentIndex + 1} / ${questions.size}", fontWeight = FontWeight.Bold, color = Slate)
             }
         }
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = SoftWhite),
-            shape = RoundedCornerShape(24.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        // Question and Answer Section
+        Card(colors = CardDefaults.cardColors(containerColor = SoftWhite), shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(text = question.prompt, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = DeepSlate)
 
                 optionsWithCorrectness.forEachIndexed { index, pair ->
                     val (option, isCorrect) = pair
                     val selected = selectedOption == index
+                    
+                    // Highlight logic for correctness.
                     val background = when {
                         answered && isCorrect -> LocalQuizColors.current.correct
                         selected -> LocalQuizColors.current.selected
                         else -> Paper
                     }
+                    
                     Card(
                         colors = CardDefaults.cardColors(containerColor = background),
                         shape = RoundedCornerShape(18.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !answered) { selectedOption = index }
+                        modifier = Modifier.fillMaxWidth().clickable(enabled = !answered) { selectedOption = index }
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(text = option, modifier = Modifier.weight(1f), color = DeepSlate)
-                            Text(
-                                text = if (selected) "●" else "○",
-                                color = Slate,
-                                fontSize = 18.sp
-                            )
+                            Text(text = if (selected) "●" else "○", color = Slate, fontSize = 18.sp)
                         }
                     }
                 }
 
+                // Feedback and Hints
                 if (feedback != null) {
-                    Text(
-                        text = feedback!!,
-                        color = if (feedback!!.startsWith("Correct")) Success else Danger,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = feedback!!, color = if (feedback!!.startsWith("Correct")) Success else Danger, fontWeight = FontWeight.Bold)
                     if (answered && hints) {
-                        Text(
-                            text = question.explanation,
-                            color = Slate,
-                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                        )
+                        Text(text = question.explanation, color = Slate, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
                     }
                 }
             }
@@ -765,14 +666,9 @@ private fun QuizScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Navigation row
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(60.dp),
-                shape = RoundedCornerShape(18.dp)
-            ) {
+            OutlinedButton(onClick = onBackClick, modifier = Modifier.weight(1f).height(60.dp), shape = RoundedCornerShape(18.dp)) {
                 Text("Back")
             }
 
@@ -782,10 +678,7 @@ private fun QuizScreen(
             ) {
                 if (!answered) {
                     val pickedIndex = selectedOption
-                    if (pickedIndex == null) {
-                        feedback = "Choose an answer first."
-                        return@ActionButton
-                    }
+                    if (pickedIndex == null) { feedback = "Choose an answer first."; return@ActionButton }
                     answered = true
                     val isCorrect = optionsWithCorrectness[pickedIndex].second
                     if (isCorrect) {
@@ -796,21 +689,18 @@ private fun QuizScreen(
                         feedback = "Incorrect! Answer: $correctText"
                     }
                 } else {
-                    if (currentIndex == questions.lastIndex) {
-                        finishQuiz(timedOut = false)
-                    } else {
-                        currentIndex += 1
-                        selectedOption = null
-                        answered = false
-                        feedback = null
-                    }
+                    if (currentIndex == questions.lastIndex) finishQuiz(timedOut = false)
+                    else { currentIndex += 1; selectedOption = null; answered = false; feedback = null }
                 }
             }
         }
     }
 }
 
-// Flashcard screen for one selected subject. Cards can be tapped to expand or collapse.
+/**
+ * Flashcard viewer screen.
+ * Displays simple cards that can be expanded to show more detail.
+ */
 @Composable
 private fun CardsScreen(
     subject: Subject,
@@ -818,20 +708,8 @@ private fun CardsScreen(
 ) {
     var expandedIndex by remember { mutableStateOf<Int?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Clay)
-            .verticalScroll(rememberScrollState())
-            .padding(18.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Paper, RoundedCornerShape(24.dp))
-                .padding(18.dp),
-            contentAlignment = Alignment.Center
-        ) {
+    Column(modifier = Modifier.fillMaxSize().background(Clay).verticalScroll(rememberScrollState()).padding(18.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().background(Paper, RoundedCornerShape(24.dp)).padding(18.dp), contentAlignment = Alignment.Center) {
             Text(text = "CARDS", fontWeight = FontWeight.Black, color = Slate, fontSize = 38.sp)
         }
 
@@ -841,28 +719,23 @@ private fun CardsScreen(
             Card(
                 colors = CardDefaults.cardColors(containerColor = SoftWhite),
                 shape = RoundedCornerShape(22.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-                    .clickable { expandedIndex = if (expandedIndex == index) null else index }
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).clickable { expandedIndex = if (expandedIndex == index) null else index }
             ) {
                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(text = card.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = DeepSlate)
+                    // Logic to truncate text unless the card is expanded.
                     Text(text = if (expandedIndex == index) card.body else card.body.take(72) + if (card.body.length > 72) "..." else "", color = Slate)
-                    Text(
-                        text = if (expandedIndex == index) "Tap to collapse" else "Tap to expand",
-                        color = LocalQuizColors.current.slate,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = if (expandedIndex == index) "Tap to collapse" else "Tap to expand", color = LocalQuizColors.current.slate, fontWeight = FontWeight.Bold)
                 }
             }
         }
-
         BackButton(onClick = onBackClick)
     }
 }
 
-// Resources screen for one selected subject. Lets users search resources and open external links.
+/**
+ * Screen for displaying external study resources and links.
+ */
 @Composable
 private fun ResourcesScreen(
     subject: Subject,
@@ -876,64 +749,27 @@ private fun ResourcesScreen(
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Clay)
-            .verticalScroll(rememberScrollState())
-            .padding(18.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Paper, RoundedCornerShape(24.dp))
-                .padding(18.dp),
-            contentAlignment = Alignment.Center
-        ) {
+    Column(modifier = Modifier.fillMaxSize().background(Clay).verticalScroll(rememberScrollState()).padding(18.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().background(Paper, RoundedCornerShape(24.dp)).padding(18.dp), contentAlignment = Alignment.Center) {
             Text(text = "RESOURCES", fontWeight = FontWeight.Black, color = Slate, fontSize = 34.sp)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = filter,
-            onValueChange = { filter = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Search resources") },
-            singleLine = true
-        )
-
+        OutlinedTextField(value = filter, onValueChange = { filter = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Search resources") }, singleLine = true)
         Spacer(modifier = Modifier.height(16.dp))
 
         if (resources.isEmpty()) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = SoftWhite),
-                shape = RoundedCornerShape(22.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "No resources available for \"$filter\". Try a different search.",
-                    modifier = Modifier.padding(18.dp),
-                    color = Danger,
-                    fontWeight = FontWeight.Bold
-                )
+            Card(colors = CardDefaults.cardColors(containerColor = SoftWhite), shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
+                Text(text = "No resources available for \"$filter\". Try a different search.", modifier = Modifier.padding(18.dp), color = Danger, fontWeight = FontWeight.Bold)
             }
         } else {
             resources.forEach { resource ->
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = SoftWhite),
-                    shape = RoundedCornerShape(22.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                ) {
+                Card(colors = CardDefaults.cardColors(containerColor = SoftWhite), shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
                     Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(text = resource.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = DeepSlate)
                         Text(text = resource.summary, color = Slate)
                         if (!resource.url.isNullOrBlank()) {
-                            TextButton(onClick = { uriHandler.openUri(resource.url) }) {
-                                Text("Open resource")
-                            }
+                            TextButton(onClick = { uriHandler.openUri(resource.url) }) { Text("Open resource") }
                         } else {
                             Text(text = "No external link attached.", color = Slate)
                         }
@@ -941,58 +777,33 @@ private fun ResourcesScreen(
                 }
             }
         }
-
         BackButton(onClick = onBackClick)
     }
 }
 
-// Leaderboard screen. Shows saved scores and allows entries to be removed.
+/**
+ * Screen displaying the saved leaderboard entries.
+ */
 @Composable
 private fun LeaderboardScreen(
     entries: List<ScoreEntry>,
     onRemoveEntry: (Int) -> Unit,
     onBackClick: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Clay)
-            .verticalScroll(rememberScrollState())
-            .padding(18.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Paper, RoundedCornerShape(24.dp))
-                .padding(18.dp),
-            contentAlignment = Alignment.Center
-        ) {
+    Column(modifier = Modifier.fillMaxSize().background(Clay).verticalScroll(rememberScrollState()).padding(18.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().background(Paper, RoundedCornerShape(24.dp)).padding(18.dp), contentAlignment = Alignment.Center) {
             Text(text = "BEST SCORES", fontWeight = FontWeight.Black, color = Slate, fontSize = 32.sp)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         entries.forEachIndexed { index, entry ->
-            Card(
-                colors = CardDefaults.cardColors(containerColor = SoftWhite),
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+            Card(colors = CardDefaults.cardColors(containerColor = SoftWhite), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(text = "${index + 1}", fontSize = 24.sp, fontWeight = FontWeight.Black, color = Slate)
                         Spacer(modifier = Modifier.width(12.dp))
-                        IconButton(onClick = { onRemoveEntry(index) }) {
-                            Text(text = "🗑", fontSize = 24.sp, color = Danger)
-                        }
+                        IconButton(onClick = { onRemoveEntry(index) }) { Text(text = "🗑", fontSize = 24.sp, color = Danger) }
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(text = entry.playerName, fontWeight = FontWeight.Bold, color = DeepSlate)
@@ -1002,12 +813,14 @@ private fun LeaderboardScreen(
                 }
             }
         }
-
         BackButton(onClick = onBackClick)
     }
 }
 
-// End-of-quiz result screen. Shows score, allows saving to leaderboard, and provides navigation options.
+/**
+ * Screen shown after completing a quiz.
+ * Displays final results and provides options to save scores or play again.
+ */
 @Composable
 private fun ResultScreen(
     subjectName: String,
@@ -1022,107 +835,48 @@ private fun ResultScreen(
     var name by remember { mutableStateOf("") }
     var hasSaved by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(18.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Paper),
-                shape = RoundedCornerShape(26.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(22.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = if (timedOut) "TIME OVER" else "GAME OVER",
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Slate,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = subjectName,
-                        fontWeight = FontWeight.Bold,
-                        color = DeepSlate,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = "$score / $total",
-                        fontSize = 34.sp,
-                        fontWeight = FontWeight.Black,
-                        color = DeepSlate,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        text = "${if (total == 0) 0 else score * 100 / total}%",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Slate,
-                        textAlign = TextAlign.Center
-                    )
+    Box(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            // Result Card
+            Card(colors = CardDefaults.cardColors(containerColor = Paper), shape = RoundedCornerShape(26.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(text = if (timedOut) "TIME OVER" else "GAME OVER", fontSize = 36.sp, fontWeight = FontWeight.Black, color = Slate, textAlign = TextAlign.Center)
+                    Text(text = subjectName, fontWeight = FontWeight.Bold, color = DeepSlate, textAlign = TextAlign.Center)
+                    Text(text = "$score / $total", fontSize = 34.sp, fontWeight = FontWeight.Black, color = DeepSlate, textAlign = TextAlign.Center)
+                    Text(text = "${if (total == 0) 0 else score * 100 / total}%", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Slate, textAlign = TextAlign.Center)
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Score saving section
             if (!hasSaved) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = SoftWhite),
-                    shape = RoundedCornerShape(22.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Card(colors = CardDefaults.cardColors(containerColor = SoftWhite), shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("Enter name for leaderboard:", fontWeight = FontWeight.Bold, color = DeepSlate)
-                        OutlinedTextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Your Name") },
-                            singleLine = true
-                        )
+                        OutlinedTextField(value = name, onValueChange = { name = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Your Name") }, singleLine = true)
                         ActionButton(text = "SAVE SCORE", modifier = Modifier.fillMaxWidth()) {
-                            if (name.isNotBlank()) {
-                                onSaveScore(name)
-                                hasSaved = true
-                            }
+                            if (name.isNotBlank()) { onSaveScore(name); hasSaved = true }
                         }
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
+            // Navigation buttons
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                 ActionButton(text = "PLAY AGAIN", modifier = Modifier.weight(1f), onClick = onPlayAgain)
                 ActionButton(text = "LEADERBOARD", modifier = Modifier.weight(1f), onClick = onLeaderboard)
             }
-
             Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = onHome,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Text("HOME")
-            }
+            OutlinedButton(onClick = onHome, modifier = Modifier.fillMaxWidth().height(60.dp), shape = RoundedCornerShape(18.dp)) { Text("HOME") }
         }
     }
 }
 
-// Settings dialog for sound effects, music toggle, hints, and dark mode.
+/**
+ * A modal dialog for managing user settings like audio, hints, and dark mode.
+ */
 @Composable
 private fun SettingsDialog(
     soundEffects: Boolean,
@@ -1140,38 +894,30 @@ private fun SettingsDialog(
         title = { Text("Settings") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Sound Effects")
-                    Switch(checked = soundEffects, onCheckedChange = onSoundEffectsChange)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Music")
-                    Switch(checked = music, onCheckedChange = onMusicChange)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Show Hints")
-                    Switch(checked = hints, onCheckedChange = onHintsChange)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Dark Mode")
-                    Switch(checked = isDarkTheme, onCheckedChange = onDarkThemeChange)
-                }
+                SettingsToggle("Sound Effects", soundEffects, onSoundEffectsChange)
+                SettingsToggle("Music", music, onMusicChange)
+                SettingsToggle("Show Hints", hints, onHintsChange)
+                SettingsToggle("Dark Mode", isDarkTheme, onDarkThemeChange)
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
-        }
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }
     )
 }
 
-// Large menu button used on the title screen.
+/** Helper for rows within the settings dialog. */
+@Composable
+private fun SettingsToggle(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+        Text(label); Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+/** Large stylized button for the title screen. */
 @Composable
 private fun PrimaryMenuButton(text: String, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth(0.82f)
-            .height(74.dp),
+        modifier = Modifier.fillMaxWidth(0.82f).height(74.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Paper, contentColor = Slate),
         shape = RoundedCornerShape(18.dp)
     ) {
@@ -1179,7 +925,7 @@ private fun PrimaryMenuButton(text: String, onClick: () -> Unit) {
     }
 }
 
-// Reusable filled action button used across multiple screens.
+/** Reusable button for general actions. */
 @Composable
 private fun ActionButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Button(
@@ -1192,17 +938,11 @@ private fun ActionButton(text: String, modifier: Modifier = Modifier, onClick: (
     }
 }
 
-// Clickable card representing one subject in the Choose screen.
+/** Represents a single subject item in the selection list. */
 @Composable
 private fun SubjectTile(subject: Subject, selected: Boolean, onClick: () -> Unit) {
     val bg = if (selected) Paper else SoftWhite
-    Card(
-        colors = CardDefaults.cardColors(containerColor = bg),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-    ) {
+    Card(colors = CardDefaults.cardColors(containerColor = bg), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text(text = subject.name, fontWeight = FontWeight.Black, color = DeepSlate)
@@ -1213,14 +953,12 @@ private fun SubjectTile(subject: Subject, selected: Boolean, onClick: () -> Unit
     }
 }
 
-// Reusable back button used by several screens.
+/** A standard back button used for nested screen navigation. */
 @Composable
 private fun BackButton(onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        modifier = Modifier
-            .width(140.dp)
-            .height(70.dp),
+        modifier = Modifier.width(140.dp).height(70.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Paper, contentColor = Slate),
         shape = RoundedCornerShape(18.dp)
     ) {
@@ -1228,7 +966,7 @@ private fun BackButton(onClick: () -> Unit) {
     }
 }
 
-// Converts a number of seconds into MM:SS format for the quiz timer.
+/** Formatting helper for the MM:SS timer display. */
 private fun formatTime(seconds: Int): String {
     val mins = seconds / 60
     val secs = seconds % 60
