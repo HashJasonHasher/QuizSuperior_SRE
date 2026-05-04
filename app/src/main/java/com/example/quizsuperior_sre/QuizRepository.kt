@@ -1,7 +1,15 @@
 package com.example.quizsuperior_sre
 
+// Repository file for Quiz Superior.
+// This object stores the sample quiz content used by the app: subjects, questions, flashcards, and resource links.
+// Keeping this data here separates quiz content from the UI code in MainActivity.kt.
+
+// Singleton object, meaning the app uses one shared QuizRepository instead of creating multiple repository instances.
 object QuizRepository {
+    // Returns the full list of subjects that appear in the Choose screen.
+    // Each subject contains its own questions, study cards, and resource links.
     fun sampleSubjects(): List<Subject> = listOf(
+        // Java Programming 1 subject: basic Java syntax, primitive types, loops, classes, and beginner concepts.
         subject(
             id = "java1",
             group = "College",
@@ -30,6 +38,7 @@ object QuizRepository {
                 r("Java String Guide", "Refresh how Strings work in Java.", "https://docs.oracle.com/javase/8/docs/api/java/lang/String.html")
             )
         ),
+        // History subject: broad world/U.S. history review questions and study material.
         subject(
             id = "history",
             group = "High School",
@@ -58,6 +67,7 @@ object QuizRepository {
                 r("Crash Course History", "Fast review videos for broad historical topics.", "https://www.youtube.com/@crashcourse")
             )
         ),
+        // Trigonometry subject: right-triangle ratios, reciprocal identities, and common trig facts.
         subject(
             id = "trig",
             group = "High School",
@@ -86,6 +96,7 @@ object QuizRepository {
                 r("Unit Circle Guide", "A quick unit-circle review page.", "https://www.mathopenref.com/unitcircle.html")
             )
         ),
+        // Physics subject: motion, forces, energy, vectors, and introductory physics formulas.
         subject(
             id = "physics",
             group = "High School",
@@ -114,6 +125,7 @@ object QuizRepository {
                 r("HyperPhysics", "Compact reference for many physics topics.", "http://hyperphysics.phy-astr.gsu.edu/")
             )
         ),
+        // Calculus 1 subject: limits, derivatives, rules of differentiation, and basic integral ideas.
         subject(
             id = "calc1",
             group = "College",
@@ -142,6 +154,7 @@ object QuizRepository {
                 r("Derivative Rules", "Quick reference page for common derivative rules.", "https://www.mathsisfun.com/calculus/derivatives-rules.html")
             )
         ),
+        // Python 1 subject: beginner Python syntax, data types, functions, lists, and loops.
         subject(
             id = "python1",
             group = "College",
@@ -170,6 +183,7 @@ object QuizRepository {
                 r("Python Lists", "Review how list methods work.", "https://docs.python.org/3/tutorial/datastructures.html")
             )
         ),
+        // Software Engineering subject: requirements, UML diagrams, testing, debugging, and project design concepts.
         subject(
             id = "softwareeng",
             group = "College",
@@ -198,6 +212,7 @@ object QuizRepository {
                 r("Requirements Analysis", "Notes about writing useful system requirements.", "https://www.techtarget.com/searchcio/definition/requirements-analysis")
             )
         ),
+        // Data Structures subject: stacks, queues, arrays, sets, maps, trees, and graphs.
         subject(
             id = "datastructures",
             group = "Computer Science",
@@ -227,6 +242,7 @@ object QuizRepository {
             )
         ),
 
+        // Algorithms subject: Big-O, searching, sorting, recursion, and general problem-solving strategies.
         subject(
             id = "algorithms",
             group = "Computer Science",
@@ -256,6 +272,7 @@ object QuizRepository {
             )
         ),
 
+        // Databases / SQL subject: SQL commands, table relationships, keys, filtering, and joins.
         subject(
             id = "sql",
             group = "Computer Science",
@@ -285,6 +302,7 @@ object QuizRepository {
             )
         ),
 
+        // Cybersecurity subject: phishing, encryption, hashing, MFA, firewalls, and the CIA triad.
         subject(
             id = "cybersecurity",
             group = "Computer Science",
@@ -314,6 +332,7 @@ object QuizRepository {
             )
         ),
 
+        // Statistics subject: measures of center, spread, probability, samples, and data interpretation.
         subject(
             id = "statistics",
             group = "Mathematics",
@@ -344,6 +363,8 @@ object QuizRepository {
         )
     )
 
+    // Helper function that builds a Subject object.
+    // This keeps each subject block shorter and easier to read.
     private fun subject(
         id: String,
         group: String,
@@ -354,6 +375,8 @@ object QuizRepository {
         resources: List<StudyResource>
     ) = Subject(id, group, name, description, questions, cards, resources)
 
+    // Helper function that builds a QuizQuestion object.
+    // correctIndex identifies which option in the options list is correct.
     private fun q(
         prompt: String,
         options: List<String>,
@@ -361,7 +384,10 @@ object QuizRepository {
         explanation: String
     ) = QuizQuestion(prompt, options, correctIndex, explanation)
 
+    // Helper function that builds a StudyCard object for the flashcard screen.
     private fun c(title: String, body: String) = StudyCard(title, body)
 
+    // Helper function that builds a StudyResource object for the resources screen.
+    // url defaults to null so resources can be listed without a clickable link if needed.
     private fun r(title: String, summary: String, url: String? = null) = StudyResource(title, summary, url)
 }

@@ -1,5 +1,8 @@
 package com.example.quizsuperior_sre
 
+// MainActivity.kt contains the app entry point, theme color setup, screen navigation, and all Jetpack Compose UI screens.
+// The app uses manual screen state with the AppScreen sealed class instead of a separate navigation library.
+
 import android.app.Activity
 import android.content.Context
 import android.os.Bundle
@@ -59,6 +62,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 
+// Holds the custom color palette used throughout the quiz app.
+// The app provides either LightQuizColors or DarkQuizColors depending on the dark mode setting.
 data class QuizColors(
     val paper: Color,
     val clay: Color,
@@ -71,10 +76,12 @@ data class QuizColors(
     val correct: Color
 )
 
+// CompositionLocal used to make QuizColors available to every composable without passing colors manually as parameters.
 val LocalQuizColors = staticCompositionLocalOf<QuizColors> {
     error("No QuizColors provided")
 }
 
+// Light mode version of the custom app color palette.
 private val LightQuizColors = QuizColors(
     paper = Color(0xFFF4EBC8),
     clay = Color(0xFFD28A5B),
@@ -87,6 +94,7 @@ private val LightQuizColors = QuizColors(
     correct = Color(0xFFDFF3E0)
 )
 
+// Dark mode version of the custom app color palette.
 private val DarkQuizColors = QuizColors(
     paper = Color(0xFF2D3748),
     clay = Color(0xFF1A202C),
@@ -99,6 +107,8 @@ private val DarkQuizColors = QuizColors(
     correct = Color(0xFF2D4F35)
 )
 
+// Convenience getters for the current theme colors.
+// These make the UI code easier to read than repeatedly typing LocalQuizColors.current.colorName.
 private val Paper @Composable get() = LocalQuizColors.current.paper
 private val Clay @Composable get() = LocalQuizColors.current.clay
 private val Slate @Composable get() = LocalQuizColors.current.slate
@@ -107,6 +117,8 @@ private val SoftWhite @Composable get() = LocalQuizColors.current.softWhite
 private val Danger @Composable get() = LocalQuizColors.current.danger
 private val Success @Composable get() = LocalQuizColors.current.success
 
+// Defines every screen/state the app can display.
+// The screen variable in QuizSuperiorApp stores one of these values to control navigation.
 sealed class AppScreen {
     object Title : AppScreen()
     object Choose : AppScreen()
@@ -117,16 +129,20 @@ sealed class AppScreen {
     data class Result(val score: Int, val total: Int, val subjectName: String, val timedOut: Boolean) : AppScreen()
 }
 
+// Main Android activity. This is the first Kotlin class Android launches when the app opens.
 class MainActivity : ComponentActivity() {
+    // Called when the activity is created. Sets up edge-to-edge display, theme state, and Compose content.
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         setContent {
+            // Loads the saved dark mode preference so the app remembers the user's theme choice.
             var darkTheme by remember {
                 mutableStateOf(getPreferences(MODE_PRIVATE).getBoolean("dark_mode", false))
             }
 
+            // Chooses the correct custom color palette based on the dark mode switch.
             val quizColors = if (darkTheme) DarkQuizColors else LightQuizColors
 
             CompositionLocalProvider(LocalQuizColors provides quizColors) {
@@ -145,20 +161,27 @@ class MainActivity : ComponentActivity() {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+// Root composable for the entire app.
+// It owns global app state, screen navigation, selected subjects, settings, and leaderboard storage.
 @Composable
 fun QuizSuperiorApp(
     isDarkTheme: Boolean,
     onDarkThemeChange: (Boolean) -> Unit
 
 ) {
+    // Accesses Android context/activity so the app can use SharedPreferences, URLs, and exit behavior.
     val context = LocalContext.current
     val activity = context as Activity
 
     val uriHandler = LocalUriHandler.current
+    // Loads the list of available subjects once for the current composition.
     val subjects = remember { QuizRepository.sampleSubjects() }
 
+    // SharedPreferences stores persistent app data such as leaderboard scores and settings.
     val prefs = remember { context.getSharedPreferences("quiz_prefs", Context.MODE_PRIVATE) }
 
+    // Reads leaderboard entries from SharedPreferences.
+    // If no saved data exists, default sample scores are shown.
     fun loadLeaderboard(): List<ScoreEntry> {
         val data = prefs.getString("leaderboard", null) ?: return listOf(
             ScoreEntry("Alex", "Calculus 1", 10, 10),
@@ -177,16 +200,20 @@ fun QuizSuperiorApp(
         }
     }
 
+    // Saves leaderboard entries as one serialized string in SharedPreferences.
     fun saveLeaderboard(entries: List<ScoreEntry>) {
         val serialized = entries.joinToString(";") { "${it.playerName}|${it.subjectName}|${it.correct}|${it.total}" }
         prefs.edit { putString("leaderboard", serialized) }
     }
 
+    // Mutable list that updates the leaderboard UI whenever scores are added or removed.
     val leaderboard = remember {
         mutableStateListOf<ScoreEntry>().apply { addAll(loadLeaderboard()) }
     }
 
+    // Current screen. Changing this value is how the app navigates between pages.
     var screen by remember { mutableStateOf<AppScreen>(AppScreen.Title) }
+    // Stores all selected subject IDs so quizzes can combine multiple topics.
     var selectedSubjectIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var searchQuery by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
@@ -194,8 +221,10 @@ fun QuizSuperiorApp(
     var music by remember { mutableStateOf(prefs.getBoolean("music", false)) }
     var hints by remember { mutableStateOf(prefs.getBoolean("hints", true)) }
 
+    // Converts selected IDs into full Subject objects for the UI and quiz creation.
     val selectedSubjects = subjects.filter { it.id in selectedSubjectIds }
 
+    // Shows the settings dialog only when the gear button has been clicked.
     if (showSettings) {
         SettingsDialog(
             soundEffects = soundEffects,
@@ -219,6 +248,8 @@ fun QuizSuperiorApp(
         )
     }
 
+    // Scaffold provides one shared top app bar and background for every screen.
+    // This avoids adding a toolbar separately to each screen.
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -236,6 +267,7 @@ fun QuizSuperiorApp(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // Chooses which screen composable to display based on the current AppScreen value.
             when (val current = screen) {
                 AppScreen.Title -> TitleScreen(
                     onStartClick = { screen = AppScreen.Choose },
@@ -279,8 +311,11 @@ fun QuizSuperiorApp(
                 )
 
                 is AppScreen.Quiz -> {
+                    // Finds all selected subjects and combines their questions into a temporary mixed quiz.
                     val quizSubjects = subjects.filter { it.id in current.subjectIds }
 
+                    // Temporary Subject used only for the quiz screen.
+                    // It keeps the QuizScreen reusable for both single-topic and mixed-topic quizzes.
                     val mixedSubject = Subject(
                         id = quizSubjects.joinToString("_") { it.id },
                         group = "Mixed",
@@ -365,6 +400,7 @@ fun QuizSuperiorApp(
         }
     }
 }
+// Title/home screen with Start, Score, Exit, and Settings buttons.
 @Composable
 private fun TitleScreen(
     onStartClick: () -> Unit,
@@ -431,6 +467,7 @@ private fun TitleScreen(
     }
 }
 
+// Subject selection screen. Supports searching, selecting multiple topics, and opening quiz/cards/resources.
 @Composable
 private fun ChooseScreen(
     selectedSubjects: List<Subject>,
@@ -594,6 +631,7 @@ private fun ChooseScreen(
     }
 }
 
+// Main quiz-taking screen. Displays questions, randomized answer choices, timer, feedback, and scoring.
 @Composable
 private fun QuizScreen(
     subject: Subject,
@@ -602,6 +640,7 @@ private fun QuizScreen(
     onBackClick: () -> Unit,
     onFinished: (score: Int, total: Int, timedOut: Boolean) -> Unit
 ) {
+    // Shuffles the questions once for this quiz attempt.
     val questions = remember(subject.id) { subject.questions.shuffled() }
     var currentIndex by remember(subject.id) { mutableIntStateOf(0) }
     var selectedOption by remember { mutableStateOf<Int?>(null) }
@@ -612,16 +651,19 @@ private fun QuizScreen(
     var finished by remember { mutableStateOf(false) }
 
     val question = questions[currentIndex]
+    // Pairs each answer option with whether it is correct, then shuffles choices for the current question.
     val optionsWithCorrectness = remember(currentIndex) {
         question.options.mapIndexed { index, s -> s to (index == question.correctIndex) }.shuffled()
     }
 
+    // Finishes the quiz exactly once, then reports the final score to the parent screen.
     fun finishQuiz(timedOut: Boolean) {
         if (finished) return
         finished = true
         onFinished(score, questions.size, timedOut)
     }
 
+    // Countdown timer. Runs once for this quiz and ends the quiz automatically if time reaches zero.
     LaunchedEffect(subject.id) {
         while (timeLeft > 0 && !finished) {
             kotlinx.coroutines.delay(1000)
@@ -768,6 +810,7 @@ private fun QuizScreen(
     }
 }
 
+// Flashcard screen for one selected subject. Cards can be tapped to expand or collapse.
 @Composable
 private fun CardsScreen(
     subject: Subject,
@@ -819,6 +862,7 @@ private fun CardsScreen(
     }
 }
 
+// Resources screen for one selected subject. Lets users search resources and open external links.
 @Composable
 private fun ResourcesScreen(
     subject: Subject,
@@ -902,6 +946,7 @@ private fun ResourcesScreen(
     }
 }
 
+// Leaderboard screen. Shows saved scores and allows entries to be removed.
 @Composable
 private fun LeaderboardScreen(
     entries: List<ScoreEntry>,
@@ -962,6 +1007,7 @@ private fun LeaderboardScreen(
     }
 }
 
+// End-of-quiz result screen. Shows score, allows saving to leaderboard, and provides navigation options.
 @Composable
 private fun ResultScreen(
     subjectName: String,
@@ -1076,6 +1122,7 @@ private fun ResultScreen(
     }
 }
 
+// Settings dialog for sound effects, music toggle, hints, and dark mode.
 @Composable
 private fun SettingsDialog(
     soundEffects: Boolean,
@@ -1117,6 +1164,7 @@ private fun SettingsDialog(
     )
 }
 
+// Large menu button used on the title screen.
 @Composable
 private fun PrimaryMenuButton(text: String, onClick: () -> Unit) {
     Button(
@@ -1131,6 +1179,7 @@ private fun PrimaryMenuButton(text: String, onClick: () -> Unit) {
     }
 }
 
+// Reusable filled action button used across multiple screens.
 @Composable
 private fun ActionButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Button(
@@ -1143,6 +1192,7 @@ private fun ActionButton(text: String, modifier: Modifier = Modifier, onClick: (
     }
 }
 
+// Clickable card representing one subject in the Choose screen.
 @Composable
 private fun SubjectTile(subject: Subject, selected: Boolean, onClick: () -> Unit) {
     val bg = if (selected) Paper else SoftWhite
@@ -1163,6 +1213,7 @@ private fun SubjectTile(subject: Subject, selected: Boolean, onClick: () -> Unit
     }
 }
 
+// Reusable back button used by several screens.
 @Composable
 private fun BackButton(onClick: () -> Unit) {
     Button(
@@ -1177,6 +1228,7 @@ private fun BackButton(onClick: () -> Unit) {
     }
 }
 
+// Converts a number of seconds into MM:SS format for the quiz timer.
 private fun formatTime(seconds: Int): String {
     val mins = seconds / 60
     val secs = seconds % 60
