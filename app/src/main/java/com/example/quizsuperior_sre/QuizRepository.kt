@@ -1,15 +1,23 @@
 package com.example.quizsuperior_sre
 
-// Repository file for Quiz Superior.
-// This object stores the sample quiz content used by the app: subjects, questions, flashcards, and resource links.
-// Keeping this data here separates quiz content from the UI code in MainActivity.kt.
-
-// Singleton object, meaning the app uses one shared QuizRepository instead of creating multiple repository instances.
+/**
+ * Repository file for Quiz Superior.
+ * 
+ * This object acts as the single source of truth for all quiz content used by the app.
+ * It stores a static list of subjects, each containing its own questions, flashcards, 
+ * and study resources. Keeping this data here ensures a clean separation between 
+ * the data layer and the UI layer (MainActivity.kt).
+ */
 object QuizRepository {
-    // Returns the full list of subjects that appear in the Choose screen.
-    // Each subject contains its own questions, study cards, and resource links.
+    
+    /**
+     * Returns the full list of [Subject] objects available in the app.
+     * This list is used by the 'Choose' screen to populate the subject selection UI.
+     */
     fun sampleSubjects(): List<Subject> = listOf(
-        // Java Programming 1 subject: basic Java syntax, primitive types, loops, classes, and beginner concepts.
+        
+        // --- JAVA PROGRAMMING 1 ---
+        // Focuses on foundational programming concepts for beginners.
         subject(
             id = "java1",
             group = "College",
@@ -38,7 +46,9 @@ object QuizRepository {
                 r("Java String Guide", "Refresh how Strings work in Java.", "https://docs.oracle.com/javase/8/docs/api/java/lang/String.html")
             )
         ),
-        // History subject: broad world/U.S. history review questions and study material.
+
+        // --- HISTORY ---
+        // Covers major world and U.S. history events and figures.
         subject(
             id = "history",
             group = "High School",
@@ -67,7 +77,9 @@ object QuizRepository {
                 r("Crash Course History", "Fast review videos for broad historical topics.", "https://www.youtube.com/@crashcourse")
             )
         ),
-        // Trigonometry subject: right-triangle ratios, reciprocal identities, and common trig facts.
+
+        // --- TRIGONOMETRY ---
+        // Mathematical study of triangles and periodic functions.
         subject(
             id = "trig",
             group = "High School",
@@ -96,7 +108,9 @@ object QuizRepository {
                 r("Unit Circle Guide", "A quick unit-circle review page.", "https://www.mathopenref.com/unitcircle.html")
             )
         ),
-        // Physics subject: motion, forces, energy, vectors, and introductory physics formulas.
+
+        // --- PHYSICS ---
+        // Basic physics covering motion, forces, and energy.
         subject(
             id = "physics",
             group = "High School",
@@ -125,7 +139,9 @@ object QuizRepository {
                 r("HyperPhysics", "Compact reference for many physics topics.", "http://hyperphysics.phy-astr.gsu.edu/")
             )
         ),
-        // Calculus 1 subject: limits, derivatives, rules of differentiation, and basic integral ideas.
+
+        // --- CALCULUS 1 ---
+        // Introduction to limits, derivatives, and basic integration.
         subject(
             id = "calc1",
             group = "College",
@@ -154,7 +170,9 @@ object QuizRepository {
                 r("Derivative Rules", "Quick reference page for common derivative rules.", "https://www.mathsisfun.com/calculus/derivatives-rules.html")
             )
         ),
-        // Python 1 subject: beginner Python syntax, data types, functions, lists, and loops.
+
+        // --- PYTHON 1 ---
+        // Introductory Python programming concepts and syntax.
         subject(
             id = "python1",
             group = "College",
@@ -183,7 +201,9 @@ object QuizRepository {
                 r("Python Lists", "Review how list methods work.", "https://docs.python.org/3/tutorial/datastructures.html")
             )
         ),
-        // Software Engineering subject: requirements, UML diagrams, testing, debugging, and project design concepts.
+
+        // --- SOFTWARE ENGINEERING ---
+        // Concepts related to the software development lifecycle and design.
         subject(
             id = "softwareeng",
             group = "College",
@@ -212,7 +232,9 @@ object QuizRepository {
                 r("Requirements Analysis", "Notes about writing useful system requirements.", "https://www.techtarget.com/searchcio/definition/requirements-analysis")
             )
         ),
-        // Data Structures subject: stacks, queues, arrays, sets, maps, trees, and graphs.
+
+        // --- DATA STRUCTURES ---
+        // Common ways to organize and store data in computer memory.
         subject(
             id = "datastructures",
             group = "Computer Science",
@@ -242,7 +264,8 @@ object QuizRepository {
             )
         ),
 
-        // Algorithms subject: Big-O, searching, sorting, recursion, and general problem-solving strategies.
+        // --- ALGORITHMS ---
+        // Procedures and formulas for solving computational problems.
         subject(
             id = "algorithms",
             group = "Computer Science",
@@ -272,7 +295,8 @@ object QuizRepository {
             )
         ),
 
-        // Databases / SQL subject: SQL commands, table relationships, keys, filtering, and joins.
+        // --- DATABASES / SQL ---
+        // Relational databases and the Structured Query Language.
         subject(
             id = "sql",
             group = "Computer Science",
@@ -302,7 +326,8 @@ object QuizRepository {
             )
         ),
 
-        // Cybersecurity subject: phishing, encryption, hashing, MFA, firewalls, and the CIA triad.
+        // --- CYBERSECURITY ---
+        // Protecting systems, networks, and programs from digital attacks.
         subject(
             id = "cybersecurity",
             group = "Computer Science",
@@ -332,7 +357,8 @@ object QuizRepository {
             )
         ),
 
-        // Statistics subject: measures of center, spread, probability, samples, and data interpretation.
+        // --- STATISTICS ---
+        // Practice of collecting and analyzing numerical data in large quantities.
         subject(
             id = "statistics",
             group = "Mathematics",
@@ -363,8 +389,10 @@ object QuizRepository {
         )
     )
 
-    // Helper function that builds a Subject object.
-    // This keeps each subject block shorter and easier to read.
+    /**
+     * Helper function that builds a [Subject] object.
+     * This keeps the static list above much shorter and more readable.
+     */
     private fun subject(
         id: String,
         group: String,
@@ -375,8 +403,10 @@ object QuizRepository {
         resources: List<StudyResource>
     ) = Subject(id, group, name, description, questions, cards, resources)
 
-    // Helper function that builds a QuizQuestion object.
-    // correctIndex identifies which option in the options list is correct.
+    /**
+     * Helper function that builds a [QuizQuestion] object.
+     * @param correctIndex identifies which option in the [options] list is the right answer (0-based).
+     */
     private fun q(
         prompt: String,
         options: List<String>,
@@ -384,10 +414,14 @@ object QuizRepository {
         explanation: String
     ) = QuizQuestion(prompt, options, correctIndex, explanation)
 
-    // Helper function that builds a StudyCard object for the flashcard screen.
+    /**
+     * Helper function that builds a [StudyCard] object for the flashcard screen.
+     */
     private fun c(title: String, body: String) = StudyCard(title, body)
 
-    // Helper function that builds a StudyResource object for the resources screen.
-    // url defaults to null so resources can be listed without a clickable link if needed.
+    /**
+     * Helper function that builds a [StudyResource] object for the resources screen.
+     * @param url defaults to null so resources can be listed without a clickable link if needed.
+     */
     private fun r(title: String, summary: String, url: String? = null) = StudyResource(title, summary, url)
 }
